@@ -29,7 +29,8 @@ class NN():
 
     def predict(self, X):
         a = self.relu(np.dot(self.X, self.weights['hidden']))
-        return np.dot(a, self.weights['output'])
+        b = np.dot(a, self.weights['output'])
+        return b, a
 
     def relu(self, N):  return np.maximum(N, 0)
     def relud(self, N): return (N > 0) * 1
