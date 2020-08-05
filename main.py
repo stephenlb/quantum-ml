@@ -5,58 +5,82 @@ import numpy as np
 #from dwave.system import EmbeddingComposite, DWaveSampler
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Main
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+def main():
+    ## Training Data (XOR)
+    data = [
+        ['A', 'B', 'Bias', 'Answer'],
+        [ 0,   0,   1,      True,  ],
+        [ 1,   1,   1,      True,  ],
+        [ 1,   0,   1,      False, ],
+        [ 0,   1,   1,      False, ],
+    ]
+
+    ## Training Model
+    nn_model = NN()
+    nn_model.load(data)
+    nn_model.train()
+
+    print(nn_model)
+
+    print("Predictions:")
+    print(nn_model.predict(nn_model.X))
+
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Basic ML Model
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class NN():
-    def weights(self, x=3, y=3):
-        self.weights = {
-            'hidden' : np.random.rand(x,y), ## Hidden Layer Weights
-            'output' : np.random.rand(y,1), ## Output Layer Weights
+    def initalize(self, x=3, y=3):
+        self.epochs    = 100
+        self.learning  = 0.2
+        self.results   = {}
+        self.gradients = {}
+        self.weights   = {
+            'hidden' : np.random.rand(x, y) - 0.5, ## Hidden Layer Weights
+            'output' : np.random.rand(y, 1) - 0.5, ## Output Layer Weights
         }
-        self.weights['hidden'] -= 0.5
-        self.weights['output'] -= 0.5
 
-    def data(self, data):
-        H = self.H = np.array(data[0])                        ## Headers / Column Names
-        X = self.X = np.array([x[0:3]    for x in data[1:]])  ## Input Features for Training
-        Y = self.Y = np.array([int(y[3]) for y in data[1:]])  ## Output Labels (Tartget Answers) for Training
-        #print(H)                                              ## Headers
-        #print(X)                                              ## Features
-        #print(Y)                                              ## Labels (Target Answer)
+    def load(self, data):
+        H = self.H = np.array(data[0])                         ## Headers / Column Names
+        X = self.X = np.array([x[0:3]      for x in data[1:]]) ## Input Features for Training
+        Y = self.Y = np.array([[int(y[3])] for y in data[1:]]) ## Output Labels (Tartget Answers) for Training
 
     def train(self):
-        pass
+        for epoch in xrange(self.epochs):
+            self.predict(self.X)
+            #error = np.square(self.Y - self.results['output'])
+            error = (self.Y - self.results['output'])
+
+            self.gradients['output'] = error * self.learning
+            self.weights['output'] += np.dot(self.results['hidden'].T, self.gradients['output'])
+
+            self.gradients['hidden'] = np.dot(self.gradients['output'], self.weights['output'].T) * \
+                self.relud(self.results['hidden'])
+            self.weights['hidden'] += np.dot(self.X.T, self.gradients['hidden'])
+
+            #if not (epoch % (self.epochs / 10)): print(epoch)
+        #if self.epochs > epoch: self.train(epoch + 1)
 
     def predict(self, X):
-        a = self.relu(np.dot(self.X, self.weights['hidden']))
-        b = np.dot(a, self.weights['output'])
-        return b, a
+        self.results['hidden'] = self.relu(np.dot(X, self.weights['hidden']))
+        self.results['output'] = np.dot(self.results['hidden'], self.weights['output'])
 
-    def relu(self, N):  return np.maximum(N, 0)
-    def relud(self, N): return (N > 0) * 1
+        return self.results['output']
 
-    def __init__(self): self.weights()
+    def relu(self, N):    return np.where(N > 0, N, N * 0.01) #0.01 * N if N <= 0 else N
+    def relud(self, N):   return (N > 0) * 1
+    def sigmoid(self, N): return 1 / (1 + np.exp(-N))
+
+    def __init__(self, **kwargs): self.initalize(**kwargs)
     def __str__(self):
         return '\nHidden Layer:\n' + str(self.weights['hidden']) + '\n' + \
                '\nOutput Layer:\n' + str(self.weights['output']) + '\n'
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-## Init Model
+## Run Main
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-nn_model = NN()
-print(nn_model)
-
-## Training Data (XOR)
-data = [
-    ['A', 'B', 'Bias', 'Answer'],
-    [ 0,   0,   1,      True,  ],
-    [ 1,   1,   1,      True,  ],
-    [ 1,   0,   1,      False, ],
-    [ 0,   1,   1,      False, ],
-]
-
-nn_model.data(data)
-print(nn_model.predict(data))
+if __name__ == "__main__": main()
 
 
 
