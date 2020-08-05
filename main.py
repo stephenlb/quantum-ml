@@ -2,6 +2,7 @@
 ## Imports
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 import numpy as np
+from dwave_qbsolv import QBSolv
 #from dwave.system import EmbeddingComposite, DWaveSampler
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -18,23 +19,29 @@ def main():
     ]
 
     ## Training Model
-    nn_model = NN()
-    nn_model.load(data)
-    nn_model.train()
+    nn = NN()
+    nn.load(data)
+    nn.train()
 
-    print(nn_model)
+    ## Predict
+    prediction = nn.predict(nn.X)
+    answers    = np.round(prediction)
+    accuracy   = (1 - np.average(np.abs((np.round(prediction) - nn.Y))))*100
 
-    prediction = nn_model.predict(nn_model.X)
-    accuracy = 100.0 - np.sum(np.round(prediction) - nn_model.Y)
-    print("Predictions:\n%s" % prediction)
+    print(nn)
+    print("Results:\n%s"             % prediction)
+    print("\nAccuracy: %s%%"         % accuracy)
+    print(np.column_stack((answers, nn.Y)))
+    print("")
 
-    print("\nAccuracy: %s%%" % accuracy)
+    ## Quantum Model
+    qnn = QuantumNN()
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Basic ML Model using Leaky ReLU
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class NN():
-    def initalize(self, epochs=100, learning=0.03, features=3, units=10, labels=1):
+    def initalize(self, epochs=500, learning=0.03, units=10, features=3, labels=1):
         self.epochs    = epochs
         self.learning  = learning
         self.results   = {}
@@ -43,8 +50,8 @@ class NN():
         f, u, l = features, units, labels
 
         self.weights   = {
-            'hidden' : np.random.uniform(size=(f, u), low=-0.5), ## Hidden Weights
-            'output' : np.random.uniform(size=(u, l), low=-0.5), ## Output Weights
+            'hidden' : np.random.uniform(size=(f, u), low=-0.4), ## Hidden Weights
+            'output' : np.random.uniform(size=(u, l), low=-0.4), ## Output Weights
         }
 
     def load(self, data):
@@ -53,7 +60,7 @@ class NN():
         Y = self.Y = np.array([[int(y[3])] for y in data[1:]]) ## Output Labels (Target Answers) for Training
 
     def train(self):
-        for epoch in xrange(self.epochs):
+        for epoch in range(self.epochs):
             self.predict(self.X)
             error = self.Y - self.results['output']
 
@@ -85,6 +92,16 @@ class NN():
     def __str__(self):
         return '\nHidden Layer:\n' + str(self.weights['hidden']) + '\n' + \
                '\nOutput Layer:\n' + str(self.weights['output']) + '\n'
+
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Quantum ML Model using QUBO
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+class QuantumNN(NN):
+    def train(self):
+        Q = {(0, 0): 1, (1, 1): 1, (0, 1): 1}
+        response = QBSolv().sample_qubo(Q)
+        print("samples=" + str(list(response.samples())))
+        print("energies=" + str(list(response.data_vectors['energy'])))
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Run Main
