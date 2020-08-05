@@ -28,8 +28,11 @@ class NN():
         pass
 
     def predict(self, X):
-        a =    np.dot(self.X, self.weights['hidden'])
+        a = self.relu(np.dot(self.X, self.weights['hidden']))
         return np.dot(a, self.weights['output'])
+
+    def relu(self, N):  return np.maximum(N, 0)
+    def relud(self, N): return (N > 0) * 1
 
     def __init__(self):
         self.weights()
