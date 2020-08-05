@@ -1,15 +1,13 @@
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Imports
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-import pprint
 import numpy as np
 #from dwave.system import EmbeddingComposite, DWaveSampler
-pp = pprint.PrettyPrinter(indent=4)
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Basic ML Model
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-class ML():
+class NN():
     def weights(self, x=3, y=3):
         self.weights = {
             'hidden' : np.random.rand(x,y), ## Hidden Layer Weights
@@ -18,16 +16,19 @@ class ML():
         self.weights['hidden'] -= 0.5
         self.weights['output'] -= 0.5
 
-    def train(self, data):
-        H = data[0]                         ## Headers / Column Names
-        X = [x[0:3]    for x in data[1:]]   ## Input Features for Training
-        Y = [int(y[3]) for y in data[1:]]   ## Output Labels (Tartget Answers) for Training
-        pp.pprint(H)                        ## Headers
-        pp.pprint(X)                        ## Features
-        pp.pprint(Y)                        ## Labels (Target Answer)
+    def data(self, data):
+        H = self.H = np.array(data[0])                        ## Headers / Column Names
+        X = self.X = np.array([x[0:3]    for x in data[1:]])  ## Input Features for Training
+        Y = self.Y = np.array([int(y[3]) for y in data[1:]])  ## Output Labels (Tartget Answers) for Training
+        #print(H)                                              ## Headers
+        #print(X)                                              ## Features
+        #print(Y)                                              ## Labels (Target Answer)
+
+    def train(self):
+        pass
 
     def predict(self, X):
-        a =    np.dot(X, self.weights['hidden'])
+        a =    np.dot(self.X, self.weights['hidden'])
         return np.dot(a, self.weights['output'])
 
     def __init__(self):
@@ -40,8 +41,8 @@ class ML():
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Init Model
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-model = ML()
-print(model)
+nn_model = NN()
+print(nn_model)
 
 ## Training Data (XOR)
 data = [
@@ -52,13 +53,16 @@ data = [
     [ 0,   1,   1,      False, ],
 ]
 
+nn_model.data(data)
+print(nn_model.predict(data))
+
 
 
 ## Calculate edges to fit into a QUBO
 #Q = dict()
 #Q.update(dict(((k, k), np.sum(v)) for (k, v) in enumerate(X)))
 
-#pp.pprint(Q)
+#print(Q)
 
 
 #def predict(X):
@@ -75,7 +79,7 @@ Q = {('A','A'):   1,
      ('C','C'):   1,
      ('C','A'):   1,
      ('C','B'):   1}
-#pp.pprint(Q)
+#print(Q)
 #print(Q)
 
 def nvm():
