@@ -24,43 +24,52 @@ def main():
 
     print(nn_model)
 
-    print("Predictions:")
-    print(nn_model.predict(nn_model.X))
+    prediction = nn_model.predict(nn_model.X)
+    accuracy = 100.0 - np.sum(np.round(prediction) - nn_model.Y)
+    print("Predictions:\n%s" % prediction)
+
+    print("\nAccuracy: %s%%" % accuracy)
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-## Basic ML Model
+## Basic ML Model using Leaky ReLU
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class NN():
-    def initalize(self, x=3, y=3):
-        self.epochs    = 100
-        self.learning  = 0.2
+    def initalize(self, epochs=100, learning=0.03, features=3, units=10, labels=1):
+        self.epochs    = epochs
+        self.learning  = learning
         self.results   = {}
         self.gradients = {}
+
+        f, u, l = features, units, labels
+
         self.weights   = {
-            'hidden' : np.random.rand(x, y) - 0.5, ## Hidden Layer Weights
-            'output' : np.random.rand(y, 1) - 0.5, ## Output Layer Weights
+            'hidden' : np.random.uniform(size=(f, u), low=-0.5), ## Hidden Weights
+            'output' : np.random.uniform(size=(u, l), low=-0.5), ## Output Weights
         }
 
     def load(self, data):
         H = self.H = np.array(data[0])                         ## Headers / Column Names
         X = self.X = np.array([x[0:3]      for x in data[1:]]) ## Input Features for Training
-        Y = self.Y = np.array([[int(y[3])] for y in data[1:]]) ## Output Labels (Tartget Answers) for Training
+        Y = self.Y = np.array([[int(y[3])] for y in data[1:]]) ## Output Labels (Target Answers) for Training
 
     def train(self):
         for epoch in xrange(self.epochs):
             self.predict(self.X)
-            #error = np.square(self.Y - self.results['output'])
-            error = (self.Y - self.results['output'])
+            error = self.Y - self.results['output']
 
+            ## Train Output Layer
             self.gradients['output'] = error * self.learning
-            self.weights['output'] += np.dot(self.results['hidden'].T, self.gradients['output'])
+            self.weights['output']  += np.dot(
+                self.results['hidden'].T,
+                self.gradients['output']
+            )
 
-            self.gradients['hidden'] = np.dot(self.gradients['output'], self.weights['output'].T) * \
-                self.relud(self.results['hidden'])
+            ## Train Hidden Layer
+            self.gradients['hidden'] = np.dot(
+                self.gradients['output'],
+                self.weights['output'].T
+            ) * self.relud(self.results['hidden'])
             self.weights['hidden'] += np.dot(self.X.T, self.gradients['hidden'])
-
-            #if not (epoch % (self.epochs / 10)): print(epoch)
-        #if self.epochs > epoch: self.train(epoch + 1)
 
     def predict(self, X):
         self.results['hidden'] = self.relu(np.dot(X, self.weights['hidden']))
@@ -68,8 +77,8 @@ class NN():
 
         return self.results['output']
 
-    def relu(self, N):    return np.where(N > 0, N, N * 0.01) #0.01 * N if N <= 0 else N
-    def relud(self, N):   return (N > 0) * 1
+    def relu(self, N):    return np.where(N > 0, N, N * 0.01)
+    def relud(self, N):   return np.where(N > 0, 1, 0)
     def sigmoid(self, N): return 1 / (1 + np.exp(-N))
 
     def __init__(self, **kwargs): self.initalize(**kwargs)

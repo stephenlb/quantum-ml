@@ -1,5 +1,9 @@
 # Quantum Machine Learning
 
+This is a learn repostiory for exploring.
+Code is for exploration, not production.
+
+
 ```shell
 docker build . -t quantum-ml
 ```
@@ -7,9 +11,6 @@ docker build . -t quantum-ml
 ```shell
 docker run quantum-ml
 ```
-
-This is a learn code repostiory for exploring.
-Code is for exploration only, not production.
 
 Looking to take a conventional Machine Learning Algorithm
 with SGD (stochastic gradient decent) on an SVM (support vector machine)
