@@ -34,9 +34,7 @@ class NN():
     def relu(self, N):  return np.maximum(N, 0)
     def relud(self, N): return (N > 0) * 1
 
-    def __init__(self):
-        self.weights()
-
+    def __init__(self): self.weights()
     def __str__(self):
         return '\nHidden Layer:\n' + str(self.weights['hidden']) + '\n' + \
                '\nOutput Layer:\n' + str(self.weights['output']) + '\n'
