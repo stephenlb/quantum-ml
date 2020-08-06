@@ -3,7 +3,7 @@
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 import numpy as np
 from dwave_qbsolv import QBSolv
-#from dwave.system import EmbeddingComposite, DWaveSampler
+from dwave.system import EmbeddingComposite, DWaveSampler
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Main
@@ -35,7 +35,9 @@ def main():
     print("")
 
     ## Quantum Model
-    qnn = QuantumNN()
+    #qnn = QuantumNN()
+    #nn.load(data)
+    #qnn.train2()
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Basic ML Model using Leaky ReLU
@@ -98,10 +100,45 @@ class NN():
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class QuantumNN(NN):
     def train(self):
-        Q = {(0, 0): 1, (1, 1): 1, (0, 1): 1}
-        response = QBSolv().sample_qubo(Q)
-        print("samples=" + str(list(response.samples())))
-        print("energies=" + str(list(response.data_vectors['energy'])))
+        #Q = {(0, 0): 1, (1, 1): 1, (0, 1): 1}
+        Q = {('A','A'):   1,
+             ('A','B'):  -1,
+             ('B','A'):  -1,
+             ('B','B'):   1,
+             ('C','C'):   1,
+             ('C','A'):   1,
+             ('C','B'):   1}
+        response = QBSolv().sample_qubo(Q, num_reads=1000, postprocess='sampling')
+        print(response)
+        print("samples=%s" % list(response.samples()))
+        print("energies=%s" % list(response.data_vectors['energy']))
+
+        for sample in response:
+            print(sample)
+
+        print(response.data)
+
+    def train2(self):
+        Q = {('A','A'):   1,
+             ('A','B'):  -1,
+             ('B','A'):  -1,
+             ('B','B'):   1,
+             ('C','C'):   1,
+             ('C','A'):   1,
+             ('C','B'):   1}
+        # Define the sampler that will be used to run the problem
+        sampler = EmbeddingComposite(DWaveSampler())
+
+        # Run the problem on the sampler and print the results
+        # postprocess='sampling' answer_mode='histogram',
+        sampleset = sampler.sample_qubo(Q, num_reads=1000, postprocess='sampling')
+
+        #print(sampleset.info)
+        print(sampleset)
+        for sample in sampleset:
+            print(sample)
+        
+        print(sampleset.data)
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Run Main
