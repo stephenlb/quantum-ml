@@ -1,6 +1,7 @@
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Imports
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+import os
 import numpy as np
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -33,9 +34,10 @@ def main():
     print("")
 
     ## Quantum Model
-    #qnn = QuantumNN()
-    #qnn.load(data)
-    #qnn.train2()
+    print("Running Quantum Model")
+    qnn = QuantumNN()
+    qnn.load(data)
+    qnn.train2()
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Basic ML Model using Leaky ReLU
@@ -119,6 +121,7 @@ class QuantumNN(NN):
 
     def train2(self):
         from dwave.system import EmbeddingComposite, DWaveSampler
+        # from dwave.system.samplers import LeapHybridSampler
 
         Q = {('A','A'):   1,
              ('A','B'):  -1,
@@ -129,22 +132,25 @@ class QuantumNN(NN):
              ('C','B'):   1}
 
         # Define the sampler that will be used to run the problem
-        sampler = EmbeddingComposite(DWaveSampler(solver={'qpu': True}))
+        ## """solver={'qpu': True})"""
+        ## LeapHybridSampler
+        sampler = EmbeddingComposite(DWaveSampler(token=os.getenv('DWAVE_API_KEY')))
 
         ## Quantum QPU Paramaters
         params = {
             'num_reads': 1000,
-            'auto_scale': True,
-            # "answer_mode": "histogram",
-            'num_spin_reversal_transforms': 10,
-            # 'annealing_time': 10,
-            # postprocess='sampling'
-            'postprocess': 'optimization',
+            #'auto_scale': True,
+            #'answer_mode': 'histogram',
+            #'num_spin_reversal_transforms': 10,
+            #'annealing_time': 10,
+            #'postprocess':'optimization',
+            'postprocess': 'sampling',
         }
 
         # Run the problem on the sampler and print the results
         # postprocess='sampling' answer_mode='histogram',
         sampleset = sampler.sample_qubo(Q, **params)
+        #sampleset = sampler.sample_ising({}, Q, **params)
 
         print("print(sampleset.info)")
         print(sampleset)
