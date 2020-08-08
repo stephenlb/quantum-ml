@@ -11,7 +11,7 @@ docker build . -t quantum-ml
 ```
 
 ```shell
-docker run quantum-ml -e DWAVE_API_KEY=YOUR_API_KEY
+docker run -e DWAVE_API_KEY=YOUR_API_KEY quantum-ml
 ```
 
 Looking to take a conventional Machine Learning Algorithm
