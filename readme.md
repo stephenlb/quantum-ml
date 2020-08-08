@@ -3,13 +3,15 @@
 This is a learn repostiory for exploring.
 Code is for exploration, not production.
 
+> Goal: Build a QSVM (Quantum Support Vector Machine) where D-Wave QPU provides
+> weights to be used in classical SVM prediction models.
 
 ```shell
 docker build . -t quantum-ml
 ```
 
 ```shell
-docker run quantum-ml
+docker run quantum-ml -e DWAVE_API_KEY=YOUR_API_KEY
 ```
 
 Looking to take a conventional Machine Learning Algorithm
