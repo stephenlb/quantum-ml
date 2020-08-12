@@ -125,14 +125,16 @@ class QuantumNN(NN):
         #q = X
         x = np.where(X, 1, 0)
         q = x#.dot(x.T)
-        Q = dict()
+        #Q = dict()
         #y = Y.T.dot(q).T
         #y = np.where(Y == 0, 0, 2)
         y = np.where(Y, 1, -1)#.T.dot(q)
         #y = Y
-        j = dict()
-        j.update(dict((k[0], v * 1.0) for k, v in np.ndenumerate(y)))
-        Q.update(dict((k,    v * 1.0) for k, v in np.ndenumerate(q)))
+        #j = dict()
+        j = {k[0]: v * 1.0 for k, v in np.ndenumerate(y)}
+        Q = {k:    v * 1.0 for k, v in np.ndenumerate(q)}
+        #j.update(dict((k[0], v * 1.0) for k, v in np.ndenumerate(y)))
+        #Q.update(dict((k,    v * 1.0) for k, v in np.ndenumerate(q)))
 
         #print("w\n%s\n" % w)
         print("q\n%s\n" % q)
