@@ -18,26 +18,26 @@ def main():
     ]
 
     ## Training Model
-    nn = NN()
-    nn.load(data)
-    nn.train()
+    #nn = NN()
+    #nn.load(data)
+    #nn.train()
 
     ## Predict
-    prediction = nn.predict(nn.X)
-    answers    = np.round(prediction)
-    accuracy   = (1 - np.average(np.abs((np.round(prediction) - nn.Y))))*100
+    #prediction = nn.predict(nn.X)
+    #answers    = np.round(prediction)
+    #accuracy   = (1 - np.average(np.abs((np.round(prediction) - nn.Y))))*100
 
-    print(nn)
-    print("Results:\n%s"             % prediction)
-    print("\nAccuracy: %s%%"         % accuracy)
-    print(np.column_stack((answers, nn.Y)))
-    print("")
+    #print(nn)
+    #print("Results:\n%s"             % prediction)
+    #print("\nAccuracy: %s%%"         % accuracy)
+    #print(np.column_stack((answers, nn.Y)))
+    #print("")
 
     ## Quantum Model
     print("Running Quantum Model")
     qnn = QuantumNN()
     qnn.load(data)
-    qnn.train2()
+    qnn.train()
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Basic ML Model using Leaky ReLU
@@ -100,24 +100,97 @@ class NN():
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class QuantumNN(NN):
     def train(self):
+        import dimod
+
+        X = self.X
+        Y = self.Y
+        
+        print("X\n%s\n" % X)
+        print("Y\n%s\n" % Y)
+
+        y = np.where( Y > 0.0, Y, -1.0)
+        x = np.where( X > 0.0, X, -1.0)
+        q = x.dot(x.T)
+        Q = dict()
+        Q.update(dict((k, v) for k, v in np.ndenumerate(q)))
+
+        print("x\n%s\n" % x)
+        print("y\n%s\n" % y)
+        print("q\n%s\n" % q)
+        print("Q\n%s\n" % Q)
+
+        bqm = dimod.BinaryQuadraticModel(y, Q, 0.0, dimod.SPIN)
+        print("bqm: \n%s\n" % bqm.adj)
+
+        #solver = dimod.ExactSolver()
+        #solver.sample_ising
+
+
+
+
+
+    def train3(self):
+        import neal
+        import dimod
         from dwave_qbsolv import QBSolv
+        from dwave.system import LeapHybridSampler
+        from dwave.system import EmbeddingComposite
+
         #Q = {(0, 0): 1, (1, 1): 1, (0, 1): 1}
-        Q = {('A','A'):   1,
+        Q1 = {
+            (0, 0): 1, (0, 1): 1, (0, 2): 1, (0, 3): 1,
+            (1, 0): 1, (1, 1): 1, (1, 2): 1, (1, 3): 1,
+            (2, 0): 1, (2, 1): -1, (2, 2): 1, (2, 3): 1,
+            (3, 0): -1, (3, 1): -1, (3, 2): 1, (3, 3): 1,
+            (4, 0): 1, (4, 1): -1, (4, 2): 1, (4, 3): 1,
+            (5, 0): 1, (5, 1): -1, (5, 2): -1, (5, 3): 1,
+            (6, 0): 1, (6, 1): -1, (6, 2): -1, (6, 3): 1,
+            (7, 0): 1, (7, 1): -1, (7, 2): -1, (7, 3): 1,
+        }
+        Q2 = {
+            (0, 0): -1, (0, 1): 1, (0, 2): 1, (0, 3): 1, (0, 4): 1, (0, 5): 1,
+            (1, 0): 1, (1, 1): -1, (1, 2): 1, (1, 3): 1, (1, 4): 1, (1, 5): 1,
+            #(2, 0): 1, (2, 1): 1, (2, 2): 1, (2, 3): 1, (2, 4): 1, (2, 5): 1,
+            #(3, 0): 1, (3, 1): 1, (3, 2): 1, (3, 3): 1, (3, 4): 1, (3, 5): 1,
+            #(4, 0): 1, (4, 1): 1, (4, 2): 1, (4, 3): 1, (4, 4): 1, (4, 5): 1,
+            #(5, 0): 1, (5, 1): 1, (5, 2): 1, (5, 3): 1, (5, 4): 1, (5, 5): 1,
+            #(6, 0): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1, (6, 4): 1, (6, 5): 1,
+            #(7, 0): 1, (7, 1): 1, (7, 2): 1, (7, 3): 1, (7, 4): 1, (7, 5): 1,
+        }
+        """Q = {('A','A'):   1,
              ('A','B'):  -1,
              ('B','A'):  -1,
              ('B','B'):   1,
              ('C','C'):   1,
              ('C','A'):   1,
-             ('C','B'):   1}
+             ('C','B'):   1,
+             ('D','D'):   1,
+             ('D','A'):   1,
+             ('D','B'):   1,
+             ('D','C'):   1}
+         """
 
-        sampler  = QBSolv()
-        response = sampler.sample_qubo(Q, num_reads=1000, postprocess='sampling')
+        hybrid    = LeapHybridSampler()
+        simulator = neal.SimulatedAnnealingSampler()
+        exact     = dimod.ExactSolver()
+        solver    = QBSolv()
+        #response = exact.sample_qubo(Q2)
+        response  = exact.sample_qubo(
+            Q2,
+            #solver=simulator,
+            #solver=simulator,
+            #num_reads=1000,
+            #postprocess='sampling'
+        )
 
         print(response)
+        print(response.info)
         print("samples=%s" % list(response.samples()))
         print("energies=%s" % list(response.data_vectors['energy']))
-        for sample in response: print(sample)
-        print(response.data)
+        #for sample in response[0:2]: print(sample)
+        samples = np.array([[samp[k] for k in range(6)] for samp in response])
+        print(samples)
+        #print(response.data)
 
     def train2(self):
         from dwave.system import EmbeddingComposite, DWaveSampler
@@ -152,10 +225,10 @@ class QuantumNN(NN):
         sampleset = sampler.sample_qubo(Q, **params)
         #sampleset = sampler.sample_ising({}, Q, **params)
 
-        print("print(sampleset.info)")
+        print("print(sampleset)")
         print(sampleset)
 
-        print("print(sampleset)")
+        print("print(sampleset.info)")
         print(sampleset.info)
 
         print("print(sampleset.data)")
