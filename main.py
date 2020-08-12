@@ -100,6 +100,7 @@ class NN():
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class QuantumNN(NN):
     def train(self):
+        import neal
         import dimod
 
         X = self.X
@@ -107,13 +108,19 @@ class QuantumNN(NN):
         print("X\n%s\n" % X)
         print("Y\n%s\n" % Y)
 
-        y = Y * 1.0
+        ## TODO - 
+        ## TODO - figure out different ways to build Q and y...
+        ## TODO - consider generating Weights and using the MM output as Q.
+        ## TODO - 
+
+        y = dict()
+        y.update(dict((k[0], v * 1.0) for k, v in np.ndenumerate(Y)))
         q = X.dot(X.T) * 1.0
         Q = dict()
         Q.update(dict((k, v * 1.0) for k, v in np.ndenumerate(q)))
 
-        print("y\n%s\n" % y)
         print("q\n%s\n" % q)
+        print("y\n%s\n" % y)
         print("Q\n%s\n" % Q)
 
         bqm = dimod.BinaryQuadraticModel(y, Q, 0.0, dimod.BINARY)
@@ -121,7 +128,10 @@ class QuantumNN(NN):
 
         solver  = dimod.ExactSolver()
         samples = solver.sample(bqm)
+        print(samples)
 
+        simulator = neal.SimulatedAnnealingSampler()
+        samples   = simulator.sample(bqm)
         print(samples)
 
     def train3(self):
