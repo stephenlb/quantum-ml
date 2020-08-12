@@ -11,10 +11,14 @@ def main():
     ## Training Data (XOR)
     data = [
         ['A', 'B', 'Bias', 'Answer'],
+        [ 0,   0,   0,      True,  ],
+        [ 1,   1,   0,      True,  ],
         [ 0,   0,   1,      True,  ],
         [ 1,   1,   1,      True,  ],
         [ 1,   0,   1,      False, ],
         [ 0,   1,   1,      False, ],
+        [ 1,   0,   0,      False, ],
+        [ 0,   1,   0,      False, ],
     ]
 
     ## Training Model
@@ -102,6 +106,7 @@ class QuantumNN(NN):
     def train(self):
         import neal
         import dimod
+        from dwave.system import EmbeddingComposite, DWaveSampler
 
         X = self.X
         Y = self.Y
@@ -113,21 +118,47 @@ class QuantumNN(NN):
         ## TODO - consider generating Weights and using the MM output as Q.
         ## TODO - 
 
-        y = dict()
-        y.update(dict((k[0], v * 1.0) for k, v in np.ndenumerate(Y)))
-        q = X.dot(X.T) * 1.0
-        Q = dict()
-        Q.update(dict((k, v * 1.0) for k, v in np.ndenumerate(q)))
+        #w = np.random.uniform(size=(4, 6), low=0)
 
+        #q = X.dot(X.T).dot(w)
+        #q = X.dot(X.T)#.dot(w)
+        #q = X
+        x = np.where(X, 1, 0)
+        q = x#.dot(x.T)
+        Q = dict()
+        #y = Y.T.dot(q).T
+        #y = np.where(Y == 0, 0, 2)
+        y = np.where(Y, 1, 0)#.T.dot(q)
+        #y = Y
+        j = dict()
+        j.update(dict((k[0], v * 1.0) for k, v in np.ndenumerate(y)))
+        Q.update(dict((k,    v * 1.0) for k, v in np.ndenumerate(q)))
+
+        #print("w\n%s\n" % w)
         print("q\n%s\n" % q)
+        print("x\n%s\n" % x)
         print("y\n%s\n" % y)
+        print("j\n%s\n" % j)
         print("Q\n%s\n" % Q)
 
-        bqm = dimod.BinaryQuadraticModel(y, Q, 0.0, dimod.BINARY)
-        print("bqm: \n%s\n" % bqm.adj)
+        bqm = dimod.BinaryQuadraticModel(j, Q, 0.0, dimod.BINARY)
 
+        print("BQM")
+        print(bqm.to_numpy_matrix()*1.0)
+
+        params = {
+            'num_reads': 1000,
+            #'num_spin_reversal_transforms': 10,
+            #'annealing_time': 10,
+            'postprocess': 'sampling',
+        }
+
+        #solver  = EmbeddingComposite(DWaveSampler(token=os.getenv('DWAVE_API_KEY')))
+        #samples = solver.sample(bqm, **params)
         solver  = dimod.ExactSolver()
         samples = solver.sample(bqm)
+
+        print("\nsamples")
         print(samples)
 
         simulator = neal.SimulatedAnnealingSampler()
@@ -162,18 +193,19 @@ class QuantumNN(NN):
             #(6, 0): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1, (6, 4): 1, (6, 5): 1,
             #(7, 0): 1, (7, 1): 1, (7, 2): 1, (7, 3): 1, (7, 4): 1, (7, 5): 1,
         }
-        """Q = {('A','A'):   1,
-             ('A','B'):  -1,
-             ('B','A'):  -1,
-             ('B','B'):   1,
-             ('C','C'):   1,
-             ('C','A'):   1,
-             ('C','B'):   1,
-             ('D','D'):   1,
-             ('D','A'):   1,
-             ('D','B'):   1,
-             ('D','C'):   1}
-         """
+        Q3 = {
+             ('A','A'):  1,
+             ('A','B'): -1,
+             ('B','A'): -1,
+             ('B','B'):  1,
+             ('C','C'):  1,
+             ('C','A'):  1,
+             ('C','B'):  1,
+             ('D','D'):  1,
+             ('D','A'):  1,
+             ('D','B'):  1,
+             ('D','C'):  1,
+        }
 
         hybrid    = LeapHybridSampler()
         simulator = neal.SimulatedAnnealingSampler()
@@ -181,7 +213,7 @@ class QuantumNN(NN):
         solver    = QBSolv()
         #response = exact.sample_qubo(Q2)
         response  = exact.sample_qubo(
-            Q2,
+            Q3,
             #solver=simulator,
             #solver=simulator,
             #num_reads=1000,
