@@ -128,7 +128,7 @@ class QuantumNN(NN):
         Q = dict()
         #y = Y.T.dot(q).T
         #y = np.where(Y == 0, 0, 2)
-        y = np.where(Y, 1, 0)#.T.dot(q)
+        y = np.where(Y, 1, -1)#.T.dot(q)
         #y = Y
         j = dict()
         j.update(dict((k[0], v * 1.0) for k, v in np.ndenumerate(y)))
