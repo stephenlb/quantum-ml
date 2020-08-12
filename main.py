@@ -104,30 +104,25 @@ class QuantumNN(NN):
 
         X = self.X
         Y = self.Y
-        
         print("X\n%s\n" % X)
         print("Y\n%s\n" % Y)
 
-        y = np.where( Y > 0.0, Y, -1.0)
-        x = np.where( X > 0.0, X, -1.0)
-        q = x.dot(x.T)
+        y = Y * 1.0
+        q = X.dot(X.T) * 1.0
         Q = dict()
-        Q.update(dict((k, v) for k, v in np.ndenumerate(q)))
+        Q.update(dict((k, v * 1.0) for k, v in np.ndenumerate(q)))
 
-        print("x\n%s\n" % x)
         print("y\n%s\n" % y)
         print("q\n%s\n" % q)
         print("Q\n%s\n" % Q)
 
-        bqm = dimod.BinaryQuadraticModel(y, Q, 0.0, dimod.SPIN)
+        bqm = dimod.BinaryQuadraticModel(y, Q, 0.0, dimod.BINARY)
         print("bqm: \n%s\n" % bqm.adj)
 
-        #solver = dimod.ExactSolver()
-        #solver.sample_ising
+        solver  = dimod.ExactSolver()
+        samples = solver.sample(bqm)
 
-
-
-
+        print(samples)
 
     def train3(self):
         import neal
