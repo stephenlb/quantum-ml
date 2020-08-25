@@ -20,6 +20,7 @@ def main():
     labels   = [ [1],  [1],  [0],  [0] ]
 
     nn = ClassicalNN(learn=0.1, bias=0.1, density=1, high=5, low=-5)
+    nn.save()
     nn.load(features=features, labels=labels)
     print(nn.predict(features))
     print(nn.dumps())
@@ -64,10 +65,9 @@ class NeuralNetwork():
         ## ... import layers
         #self.build()
 
-    def dumps(self):
+    def save(self):
         if not len(self.layers):
-            print("Uninitialized Neural Network")
-            return
+            raise Exception("Uninitialized Network: use network.load(...)")
 
         return json.dumps([{
             'name'       : layer.name
@@ -98,8 +98,7 @@ class NeuralNetwork():
 
     def train(self, data):
         if not len(self.layers):
-            print("Uninitialized Neural Network")
-            return
+            raise Exception("Uninitialized Network: use network.load(...)")
 
     def predict(self, features):
         bias   = np.full((len(features), 1), self.bias)
