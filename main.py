@@ -19,18 +19,40 @@ def main():
     features = [[1,1],[0,0],[1,0],[0,1]]
     labels   = [ [1],  [1],  [0],  [0] ]
 
-    nn = ClassicalNN(learn=0.1, bias=0.1, density=1, high=5, low=-5)
-    #nn.saveJSON()
+    nn = ClassicalNN(
+        learn=0.01
+    ,   epochs=1000
+    ,   batch=10
+    ,   bias=0.1
+    ,   density=3
+    ,   high=3
+    ,   low=-3
+    )
     nn.load(features=features, labels=labels)
-    print(nn.predict(features))
-    print(nn.saveJSON())
+    nn.train()
+    results = nn.predict(features)
+    print(np.column_stack((
+        results
+    ,   np.where(results > 0.5, 1, 0)
+    ,   np.array(labels)
+    )))
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Neural Network as a Support Vector Machine
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class NeuralNetwork():
-    def initalize(self, learn=0.1, batch=10, bias=0.1, density=5, high=5, low=-5):
+    def initalize(
+        self
+    ,   learn=0.1
+    ,   batch=10
+    ,   epochs=500
+    ,   bias=0.1
+    ,   density=5
+    ,   high=5
+    ,   low=-5
+    ):
         self.batch    = batch   ## batch size
+        self.epochs   = epochs  ## training iterations using a batch each epoch
         self.learn    = learn   ## learning rate
         self.bias     = bias    ## bias node starting value
         self.density  = density ## number of units "neurons"
@@ -42,13 +64,14 @@ class NeuralNetwork():
         self.layers   = []      ## fully built network after data load
 
     def build(self):
-        shape = (self.shape[0], self.density * self.shape[0], self.shape[1])
+        layers = len(self.unbuilt)-1
+        shape  = (self.shape[0], self.density * self.shape[0], self.shape[1])
         self.layers = [
             layer.builder(
                 name=layer.name,
                 size=(
-                    shape[0] if i == 0                   else shape[1],
-                    shape[2] if i == len(self.unbuilt)-1 else shape[1]
+                    shape[0] if i == 0      else shape[1],
+                    shape[2] if i == layers else shape[1]
                 ),
                 high=self.high,
                 low=self.low,
@@ -57,18 +80,22 @@ class NeuralNetwork():
         ]
 
     def load(
-        self,
-        features=[[1,1],[0,0],[1,0],[0,1]],
-        labels=  [ [1],  [1],  [0],  [0] ]
+        self
+    ,   features=[[1,1],[0,0],[1,0],[0,1]]
+    ,   labels=  [ [1],  [1],  [0],  [0] ]
     ):
         s, f, l       = len(features), len(features[0]) + 1, len(labels[0])
-        self.features = np.array(features) + np.full((s, 1), self.bias)
+        bias          = np.full((len(features), 1), self.bias)
+        self.features = np.concatenate((features, bias), axis=1)
         self.labels   = np.array(labels)
         self.length   = len(features)
         self.shape    = (f, l)
 
         self.build()
 
+    ## TODO
+    ## TODO
+    ## TODO
     ## TODO
     def loadJSON(self, data):
         pass
@@ -79,8 +106,7 @@ class NeuralNetwork():
         #self.build()
 
     def saveJSON(self):
-        if not len(self.layers):
-            raise Exception("Uninitialized Network: use network.load(...)")
+        if not self.initalized(): return
 
         return json.dumps([{
             'name'       : layer.name
@@ -96,24 +122,71 @@ class NeuralNetwork():
         ,   activation=activation
         ))
 
-    def train(self, data):
+    def initalized(self):
         if not len(self.layers):
             raise Exception("Uninitialized Network: use network.load(...)")
+            return False
+
+        return True
+        
+    def batcher(self):
+        features = []
+        labels   = []
+
+        for index in np.random.randint(self.length, size=self.batch):
+            features.append(self.features[index])
+            labels.append(self.labels[index])
+
+        return np.array(features), np.array(labels)
+        
+    def train(self):
+        if not self.initalized(): return
+
+        loss = []
+
+        for epoch in range(self.epochs):
+            features, labels = self.batcher()
+
+            result   = self.forward(features)
+            error    = labels - result
+            gradient = self.backward(error)
+
+            self.optimize()
+            loss.append(np.sum(error) ** 2)
+
+        print(np.array(loss))
+
 
     def predict(self, features):
         bias   = np.full((len(features), 1), self.bias)
-        train  = np.concatenate((np.array(features),bias), axis=1)
-        result = train
+        inputs = np.concatenate((np.array(features), bias), axis=1)
+
+        return self.forward(inputs)
+
+    def forward(self, inputs):
+        if not self.initalized(): return
 
         for layer in self.layers:
-            result = layer.result = layer.activator(
-                result.dot(layer.weights)
-            )
+            inputs = layer.forward(inputs)
 
         return self.layers[-1].result
-        #self.results['hidden'] = self.relu(np.dot(X, self.weights['hidden']))
-        #self.results['output'] = np.dot(self.results['hidden'], self.weights['output'])
-        #return self.results['output']
+
+    ## TODO embed in Layer (cuz we have different kinds of layers!)
+    ## TODO embed in Layer (cuz we have different kinds of layers!)
+    ## TODO embed in Layer (cuz we have different kinds of layers!)
+    ## TODO embed in Layer (cuz we have different kinds of layers!)
+    def backward(self, gradient):
+        #gradient = error * self.learn
+
+        for layer in self.layers[::-1]:
+            layer.gradient = layer.deriver(layer.input).T.dot(gradient)
+            gradient       = gradient.dot(layer.weights.T)
+
+        return gradient
+
+    def optimize(self):
+        for layer in self.layers:
+            layer.weights += layer.gradient * self.learn
 
     def __init__(self, **kwargs): self.initalize(**kwargs)
 
@@ -166,12 +239,12 @@ class LayerLoader():
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class BaseLayer():
     def initalize(
-        self,
-        name="My Layer",
-        size=(5,5),
-        high=5,
-        low=-5,
-        activation='lrelu',
+        self
+    ,   name="My Layer"
+    ,   size=(5,5)
+    ,   high=5
+    ,   low=-5
+    ,   activation='lrelu'
     ):
         self.name       = name
         self.type       = 'undefined'
@@ -179,13 +252,16 @@ class BaseLayer():
         self.weights    = Tensor(size=size, high=high, low=low).matrix
         self.gradient   = None
         self.result     = None
+        self.input      = None
         self.activation = activation
         self.activator  = getattr(BaseLayer, activation)
         self.deriver    = getattr(BaseLayer, activation+'d')
-        #self.activate   = self.activation(activation)
-        #self.derive     = self.derivative(activation)
 
-    def forward(self): pass
+    def forward(self, inputs): 
+        self.input  = inputs
+        self.result = self.activator(inputs.dot(self.weights))
+        return self.result
+
     def bacwkard(self): pass
 
     def linear(N):   return N
@@ -199,24 +275,6 @@ class BaseLayer():
 
     def sigmoid(N):  return 1 / (1 + np.exp(-N))
     def sigmoidd(N): return N * (1 - N)
-
-    """
-    def activation(self, method):
-        return {
-            'relu'    : self.relu
-        ,   'lrelu'   : self.lrelu
-        ,   'sigmoid' : self.sigmoid
-        ,   'linear'  : self.linear
-        }[method]
-
-    def derivative(self, method):
-        return {
-            'relu'    : self.relud
-        ,   'lrelu'   : self.lrelud
-        ,   'sigmoid' : self.sigmoidd
-        ,   'linear'  : self.linear
-        }[method]
-    """
 
     def __init__(self, **kwargs): self.initalize(**kwargs)
 
