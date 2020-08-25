@@ -20,15 +20,12 @@ def main():
     features = [[1,1],[0,0],[1,0],[0,1]]
     labels   = [ [1],  [1],  [0],  [0] ]
 
-    ## deep notworking
-    ##nn = DeepNN(
-    ##
     nn = DeepNN(
-        learn=0.02
+        learn=0.005
     ,   epochs=900
     ,   batch=10
-    ,   bias=1e-9
-    ,   density=2
+    ,   bias=1
+    ,   density=3
     ,   high=3.0
     ,   low=-3.0
     )
@@ -158,9 +155,7 @@ class NeuralNetwork():
             features, labels = self.batcher()
 
             result   = self.forward(features)
-            #gradient = 2 * (result - labels)
-            #error  = labels - result
-            gradient  = labels - result
+            gradient = 2 * (result - labels)
 
             self.backward(gradient)
             self.optimize()
@@ -182,47 +177,18 @@ class NeuralNetwork():
 
     ## TODO embed in Layer (cuz we have different kinds of layers!)
     ## TODO embed in Layer (cuz we have different kinds of layers!)
+    ## TODO embed in Layer (cuz we have different kinds of layers!)
+    ## TODO embed in Layer (cuz we have different kinds of layers!)
     def backward(self, gradient):
-        ## TODO this has to be wrong, we are deriving x_train...
-        #dZ = error * gradient
-        #2 * (predicted - actual)
-        #gradient = error * result
         for layer in self.layers[::-1]:
-
-            #self.grads["w"] = self.inputs.T @ grad
             layer.gradient = layer.input.T @ gradient
-                            #grad     @ self.params["w"].T
             gradient       = gradient.dot(layer.weights.T) * layer.derivative(layer.input)
-                            #self.f_prime(self.inputs) * grad
-            #gradient       = layer.derivative(layer.input) * gradient
-
-            #print("%s(%s)\n%s\nderivative: %s" %(layer.name,layer.activation,layer.input,layer.derivative(layer.input)))
-            #layer.gradient = layer.derivative(layer.input).T.dot(gradient)
-            #layer.gradient = error * layer.derivative(gradient)
-            #layer.weights += layer.gradient * self.learn
-            #gradient       = layer.gradient.dot(layer.weights.T) * layer.derivative
-            #gradient       = gradient.dot(layer.weights.T)
-            #gradient = layer.gradient = gradient.dot(layer.weights.T) * layer.derivative(layer.input)
-
-            #H = activate(np.dot(Xb, Wh))            # hidden layer results
-            #Z = activate(np.dot(H,  Wz))            # output layer results
-            #E = Yb - Z                              # how much we missed (error)
-            #dZ = E * activatePrime(Z)               # delta Z
-            #dH = dZ.dot(Wz.T) * activatePrime(H)    # delta H
-
-            #Wz += H.T.dot(dZ) * L                   # update output layer weights
-            #Wh += Xb.T.dot(dH) * L                  # update hidden layer weights
 
         return gradient
 
     def optimize(self):
-        #pass
-        for layer in self.layers:#[::-1]:
-            layer.weights += self.learn * layer.gradient
-            #derp = layer.result.T.dot(layer.gradient)
-            #lerp = derp * self.learn
-            #layer.weights += lerp.T
-            #layer.weights += layer.result.T.dot(layer.gradient).T * self.learn
+        for layer in self.layers:
+            layer.weights -= self.learn * layer.gradient
 
     def __init__(self, **kwargs): self.initalize(**kwargs)
 
@@ -244,17 +210,14 @@ class QuantumDeepNN(NeuralNetwork):
 class DeepNN(NeuralNetwork):
     def __init__(self, **kwargs):
         self.initalize(**kwargs)
-        #self.add(StandardLayer, name='Input',        activation='linear')
-        self.add(StandardLayer, name='Hidden Four',  activation='sigmoid')
-        self.add(StandardLayer, name='Hidden Four',  activation='sigmoid')
-        self.add(StandardLayer, name='Hidden Four',  activation='sigmoid')
-        self.add(StandardLayer, name='Hidden Four',  activation='sigmoid')
-        #self.add(StandardLayer, name='Hidden One',   activation='lrelu')
-        #self.add(StandardLayer, name='Hidden Four',  activation='sigmoid')
-        #self.add(StandardLayer, name='Hidden Two',   activation='lrelu')
-        #self.add(StandardLayer, name='Hidden Three',   activation='lrelu')
-        #self.add(StandardLayer, name='Hidden Three', activation='sigmoid')
-        self.add(StandardLayer, name='Output',       activation='linear')
+        #self.add(StandardLayer, name='ReLU',      activation='relu')
+        #self.add(StandardLayer, name='LeakyReLU', activation='lrelu')
+        self.add(StandardLayer, name='Sigmoid',   activation='sigmoid')
+        self.add(StandardLayer, name='Sigmoid',   activation='sigmoid')
+        self.add(StandardLayer, name='Sigmoid',   activation='sigmoid')
+        self.add(StandardLayer, name='Sigmoid',   activation='sigmoid')
+        self.add(StandardLayer, name='Sigmoid',   activation='sigmoid')
+        self.add(StandardLayer, name='Output',    activation='linear')
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Classical SVM Neural Network as a Support Vector Machine
@@ -313,7 +276,7 @@ class BaseLayer():
     def relu(N):     return np.where(N > 0, N, 0)
     def relud(N):    return np.where(N > 0, 1, 0)
 
-    def lrelu(N):    return np.where(N > 0, N, N * 0.01)
+    def lrelu(N):    return np.where(N > 0, N, N * 0.5)
     def lrelud(N):   return np.where(N > 0, 1, N * 0.01)
 
     def sigmoid(N):  return 1 / (1 + np.exp(-N))
