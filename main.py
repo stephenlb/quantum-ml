@@ -2,291 +2,241 @@
 ## Imports
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 import os
+import json
 import numpy as np
+#import neal
+#import dimod
+
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Configuration
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+DWAVE_API_KEY = os.getenv('DWAVE_API_KEY')
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Main
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 def main():
-    ## Training Data (XOR)
-    data = [
-        ['A', 'B', 'Bias', 'Answer'],
-        [ 0,   0,   0,      True,  ],
-        [ 1,   1,   0,      True,  ],
-        [ 0,   0,   1,      True,  ],
-        [ 1,   1,   1,      True,  ],
-        [ 1,   0,   1,      False, ],
-        [ 0,   1,   1,      False, ],
-        [ 1,   0,   0,      False, ],
-        [ 0,   1,   0,      False, ],
-    ]
+    features = [[1,1],[0,0],[1,0],[0,1]]
+    labels   = [ [1],  [1],  [0],  [0] ]
 
-    ## Training Model
-    #nn = NN()
-    #nn.load(data)
-    #nn.train()
-
-    ## Predict
-    #prediction = nn.predict(nn.X)
-    #answers    = np.round(prediction)
-    #accuracy   = (1 - np.average(np.abs((np.round(prediction) - nn.Y))))*100
-
-    #print(nn)
-    #print("Results:\n%s"             % prediction)
-    #print("\nAccuracy: %s%%"         % accuracy)
-    #print(np.column_stack((answers, nn.Y)))
-    #print("")
-
-    ## Quantum Model
-    print("Running Quantum Model")
-    qnn = QuantumNN()
-    qnn.load(data)
-    qnn.train()
+    nn = ClassicalNN(learn=0.1, bias=0.1, density=5, high=5, low=-5)
+    nn.data(features=features, labels=labels)
+    print(nn.dumps())
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-## Basic ML Model using Leaky ReLU
+## Neural Network as a Support Vector Machine
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-class NN():
-    def initalize(self, epochs=500, learning=0.03, units=10, features=3, labels=1):
-        self.epochs    = epochs
-        self.learning  = learning
-        self.results   = {}
-        self.gradients = {}
+class NeuralNetwork():
+    def initalize(self, learn=0.1, bias=0.1, density=5, high=5, low=-5):
+        self.learn    = learn
+        self.bias     = bias
+        self.density  = density
+        self.high     = high
+        self.low      = low
+        self.features = None
+        self.labels   = None
+        self.unbuilt  = []
+        self.layers   = []
 
-        f, u, l = features, units, labels
+    def build(self):
+        shape = (self.shape[0], self.density * self.shape[0], self.shape[1])
+        self.layers = [
+            layer.builder(
+                name=layer.name,
+                size=(
+                    shape[0] if i == 0                  else shape[1],
+                    shape[2] if i == len(self.layers)-1 else shape[1]
+                ),
+                high=self.high,
+                low=self.low,
+                activation=layer.activation
+            ) for i, layer in enumerate(self.unbuilt)
+        ]
 
-        self.weights   = {
-            'hidden' : np.random.uniform(size=(f, u), low=-0.4), ## Hidden Weights
-            'output' : np.random.uniform(size=(u, l), low=-0.4), ## Output Weights
-        }
+    ## TODO
+    def loads(self, data):
+        pass
+        ## TODO
+        #layers = json.loads(data)
+        #for layer in layers: pass
+        ## ... import layers
+        #self.build()
 
-    def load(self, data):
-        H = self.H = np.array(data[0])                         ## Headers / Column Names
-        X = self.X = np.array([x[0:3]      for x in data[1:]]) ## Input Features for Training
-        Y = self.Y = np.array([[int(y[3])] for y in data[1:]]) ## Output Labels (Target Answers) for Training
+    def dumps(self):
+        if not len(self.layers):
+            print("Uninitialized Neural Network")
+            return
 
-    def train(self):
-        for epoch in range(self.epochs):
-            self.predict(self.X)
-            error = self.Y - self.results['output']
+        return json.dumps([{
+            'name'       : layer.name
+        ,   'type'       : layer.type
+        ,   'weights'    : layer.weights.tolist()
+        ,   'activation' : layer.activation
+        } for layer in self.layers])
 
-            ## Train Output Layer
-            self.gradients['output'] = error * self.learning
-            self.weights['output']  += np.dot(
-                self.results['hidden'].T,
-                self.gradients['output']
-            )
+    def add(self, builder, name='Unamed', activation='none'):
+        self.unbuilt.append(LayerLoader(
+            builder=builder
+        ,   name=name
+        ,   activation=activation
+        ))
 
-            ## Train Hidden Layer
-            self.gradients['hidden'] = np.dot(
-                self.gradients['output'],
-                self.weights['output'].T
-            ) * self.relud(self.results['hidden'])
-            self.weights['hidden'] += np.dot(self.X.T, self.gradients['hidden'])
+    def data(
+        self,
+        features=[[1,1],[0,0],[1,0],[0,1]],
+        labels=  [ [1],  [1],  [0],  [0] ]
+    ):
+        s, f, l       = len(features), len(features[0]) + 1, len(labels[0])
+        self.features = np.array(features) + np.full((s, 1), self.bias)
+        self.labels   = np.array(labels)
+        self.length   = len(features)
+        self.shape    = (f, l)
 
-    def predict(self, X):
-        self.results['hidden'] = self.relu(np.dot(X, self.weights['hidden']))
-        self.results['output'] = np.dot(self.results['hidden'], self.weights['output'])
+        self.build()
 
-        return self.results['output']
+    def train(self, data):
+        if not len(self.layers):
+            print("Uninitialized Neural Network")
+            return
+        pass
 
-    def relu(self, N):    return np.where(N > 0, N, N * 0.01)
-    def relud(self, N):   return np.where(N > 0, 1, 0)
-    def sigmoid(self, N): return 1 / (1 + np.exp(-N))
+    def predict(self, data):
+        pass
 
     def __init__(self, **kwargs): self.initalize(**kwargs)
-    def __str__(self):
-        return '\nHidden Layer:\n' + str(self.weights['hidden']) + '\n' + \
-               '\nOutput Layer:\n' + str(self.weights['output']) + '\n'
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-## Quantum ML Model using QUBO
+## Quantum Neural Network as a Support Vector Machine
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-class QuantumNN(NN):
-    def train(self):
-        import neal
-        import dimod
-        from dwave.system import EmbeddingComposite, DWaveSampler
+class QuantumNN(NeuralNetwork):
+    def __init__(self, **kwargs): self.initalize(**kwargs)
 
-        X = self.X
-        Y = self.Y
-        print("X\n%s\n" % X)
-        print("Y\n%s\n" % Y)
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Deep Quantum Neural Network as a Support Vector Machine
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+class QuantumDeepNN(NeuralNetwork):
+    def __init__(self, **kwargs): self.initalize(**kwargs)
 
-        ## TODO - 
-        ## TODO - figure out different ways to build Q and y...
-        ## TODO - consider generating Weights and using the MM output as Q.
-        ## TODO - 
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Deep Classical SVM Neural Network as a Support Vector Machine
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+class DeepNN(NeuralNetwork):
+    def __init__(self, **kwargs): self.initalize(**kwargs)
 
-        #w = np.random.uniform(size=(4, 6), low=0)
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Classical SVM Neural Network as a Support Vector Machine
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+class ClassicalNN(NeuralNetwork):
+    def __init__(self, **kwargs):
+        self.initalize(**kwargs)
+        self.add(StandardLayer, name='Hidden', activation='lrelu')
+        self.add(StandardLayer, name='Output', activation='linear')
 
-        #q = X.dot(X.T).dot(w)
-        #q = X.dot(X.T)#.dot(w)
-        #q = X
-        x = np.where(X, 1, 0)
-        q = x#.dot(x.T)
-        #Q = dict()
-        #y = Y.T.dot(q).T
-        #y = np.where(Y == 0, 0, 2)
-        y = np.where(Y, 1, -1)#.T.dot(q)
-        #y = Y
-        #j = dict()
-        j = {k[0]: v * 1.0 for k, v in np.ndenumerate(y)}
-        Q = {k:    v * 1.0 for k, v in np.ndenumerate(q)}
-        #j.update(dict((k[0], v * 1.0) for k, v in np.ndenumerate(y)))
-        #Q.update(dict((k,    v * 1.0) for k, v in np.ndenumerate(q)))
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Layer Loader
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+class LayerLoader():
+    def initalize(self, builder, name='Unamed', activation='none'):
+        self.builder    = builder
+        self.name       = name
+        self.activation = activation
 
-        #print("w\n%s\n" % w)
-        print("q\n%s\n" % q)
-        print("x\n%s\n" % x)
-        print("y\n%s\n" % y)
-        print("j\n%s\n" % j)
-        print("Q\n%s\n" % Q)
+    def __init__(self, **kwargs): self.initalize(**kwargs)
 
-        bqm = dimod.BinaryQuadraticModel(j, Q, 0.0, dimod.BINARY)
 
-        print("BQM")
-        print(bqm.to_numpy_matrix()*1.0)
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Neural Network Layer in a Support Vector Machine
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+class BaseLayer():
+    def initalize(
+        self,
+        name="My Layer",
+        size=(5,5),
+        high=5,
+        low=-5,
+        activation='lrelu',
+    ):
+        self.name       = name
+        self.type       = 'undefined'
+        self.size       = size
+        self.weights    = Tensor(size=size, high=high, low=low).matrix
+        self.gradient   = None
+        self.result     = None
+        self.activation = activation
+        self.activator  = getattr(BaseLayer, activation)
+        self.deriver    = getattr(BaseLayer, activation+'d')
+        #self.activate   = self.activation(activation)
+        #self.derive     = self.derivative(activation)
 
-        params = {
-            'num_reads': 1000,
-            #'num_spin_reversal_transforms': 10,
-            #'annealing_time': 10,
-            'postprocess': 'sampling',
-        }
+    def forward(self): pass
+    def bacwkard(self): pass
 
-        #solver  = EmbeddingComposite(DWaveSampler(token=os.getenv('DWAVE_API_KEY')))
-        #samples = solver.sample(bqm, **params)
-        solver  = dimod.ExactSolver()
-        samples = solver.sample(bqm)
+    def linear(self, N):   return N
+    def lineard(self, N):  return N
 
-        print("\nsamples")
-        print(samples)
+    def relu(self, N):     return np.where(N > 0, N, 0)
+    def relud(self, N):    return np.where(N > 0, 1, 0)
 
-        simulator = neal.SimulatedAnnealingSampler()
-        samples   = simulator.sample(bqm)
-        print(samples)
+    def lrelu(self, N):    return np.where(N > 0, N, N * 0.01)
+    def lrelud(self, N):   return np.where(N > 0, 1, 1e-9)
 
-    def train3(self):
-        import neal
-        import dimod
-        from dwave_qbsolv import QBSolv
-        from dwave.system import LeapHybridSampler
-        from dwave.system import EmbeddingComposite
+    def sigmoid(self, N):  return 1 / (1 + np.exp(-N))
+    def sigmoidd(self, N): return N * (1 - N)
 
-        #Q = {(0, 0): 1, (1, 1): 1, (0, 1): 1}
-        Q1 = {
-            (0, 0): 1, (0, 1): 1, (0, 2): 1, (0, 3): 1,
-            (1, 0): 1, (1, 1): 1, (1, 2): 1, (1, 3): 1,
-            (2, 0): 1, (2, 1): -1, (2, 2): 1, (2, 3): 1,
-            (3, 0): -1, (3, 1): -1, (3, 2): 1, (3, 3): 1,
-            (4, 0): 1, (4, 1): -1, (4, 2): 1, (4, 3): 1,
-            (5, 0): 1, (5, 1): -1, (5, 2): -1, (5, 3): 1,
-            (6, 0): 1, (6, 1): -1, (6, 2): -1, (6, 3): 1,
-            (7, 0): 1, (7, 1): -1, (7, 2): -1, (7, 3): 1,
-        }
-        Q2 = {
-            (0, 0): -1, (0, 1): 1, (0, 2): 1, (0, 3): 1, (0, 4): 1, (0, 5): 1,
-            (1, 0): 1, (1, 1): -1, (1, 2): 1, (1, 3): 1, (1, 4): 1, (1, 5): 1,
-            #(2, 0): 1, (2, 1): 1, (2, 2): 1, (2, 3): 1, (2, 4): 1, (2, 5): 1,
-            #(3, 0): 1, (3, 1): 1, (3, 2): 1, (3, 3): 1, (3, 4): 1, (3, 5): 1,
-            #(4, 0): 1, (4, 1): 1, (4, 2): 1, (4, 3): 1, (4, 4): 1, (4, 5): 1,
-            #(5, 0): 1, (5, 1): 1, (5, 2): 1, (5, 3): 1, (5, 4): 1, (5, 5): 1,
-            #(6, 0): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1, (6, 4): 1, (6, 5): 1,
-            #(7, 0): 1, (7, 1): 1, (7, 2): 1, (7, 3): 1, (7, 4): 1, (7, 5): 1,
-        }
-        Q3 = {
-             ('A','A'):  1,
-             ('A','B'): -1,
-             ('B','A'): -1,
-             ('B','B'):  1,
-             ('C','C'):  1,
-             ('C','A'):  1,
-             ('C','B'):  1,
-             ('D','D'):  1,
-             ('D','A'):  1,
-             ('D','B'):  1,
-             ('D','C'):  1,
-        }
+    """
+    def activation(self, method):
+        return {
+            'relu'    : self.relu
+        ,   'lrelu'   : self.lrelu
+        ,   'sigmoid' : self.sigmoid
+        ,   'linear'  : self.linear
+        }[method]
 
-        hybrid    = LeapHybridSampler()
-        simulator = neal.SimulatedAnnealingSampler()
-        exact     = dimod.ExactSolver()
-        solver    = QBSolv()
-        #response = exact.sample_qubo(Q2)
-        response  = exact.sample_qubo(
-            Q3,
-            #solver=simulator,
-            #solver=simulator,
-            #num_reads=1000,
-            #postprocess='sampling'
-        )
+    def derivative(self, method):
+        return {
+            'relu'    : self.relud
+        ,   'lrelu'   : self.lrelud
+        ,   'sigmoid' : self.sigmoidd
+        ,   'linear'  : self.linear
+        }[method]
+    """
 
-        print(response)
-        print(response.info)
-        print("samples=%s" % list(response.samples()))
-        print("energies=%s" % list(response.data_vectors['energy']))
-        #for sample in response[0:2]: print(sample)
-        samples = np.array([[samp[k] for k in range(6)] for samp in response])
-        print(samples)
-        #print(response.data)
+    def __init__(self, **kwargs): self.initalize(**kwargs)
 
-    def train2(self):
-        from dwave.system import EmbeddingComposite, DWaveSampler
-        # from dwave.system.samplers import LeapHybridSampler
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Layer in a Support Vector Machine
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+class StandardLayer(BaseLayer):
+    def __init__(self, **kwargs):
+        self.initalize(**kwargs)
+        self.type = 'standard'
 
-        Q = {('A','A'):   1,
-             ('A','B'):  -1,
-             ('B','A'):  -1,
-             ('B','B'):   1,
-             ('C','C'):   1,
-             ('C','A'):   1,
-             ('C','B'):   1}
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Quantum Layer in a Support Vector Machine - REQUIRES QPU HARDWARE
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+class QuantumHardwareLayer(BaseLayer):
+    def forward(self): pass
+    def __init__(self, **kwargs):
+        self.initalize(**kwargs)
+        self.type = 'quantum-hardware'
 
-        # Define the sampler that will be used to run the problem
-        ## """solver={'qpu': True})"""
-        ## LeapHybridSampler
-        sampler = EmbeddingComposite(DWaveSampler(token=os.getenv('DWAVE_API_KEY')))
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Quantum Layer in a Support Vector Machine - Simulates QPU
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+class QuantumSimulatorLayer(BaseLayer):
+    def forward(self): pass
+    def __init__(self, **kwargs):
+        self.initalize(**kwargs)
+        self.type = 'quantum-simulator'
 
-        ## Quantum QPU Paramaters
-        params = {
-            'num_reads': 1000,
-            #'auto_scale': True,
-            #'answer_mode': 'histogram',
-            #'num_spin_reversal_transforms': 10,
-            #'annealing_time': 10,
-            #'postprocess':'optimization',
-            'postprocess': 'sampling',
-        }
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Tensor Matrix in a Support Vector Machine
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+class Tensor():
+    def initalize(self, size=(3,3), low=-10, high=10):
+        self.matrix = np.random.uniform(size=size, low=low, high=high)
 
-        # Run the problem on the sampler and print the results
-        # postprocess='sampling' answer_mode='histogram',
-        sampleset = sampler.sample_qubo(Q, **params)
-        #sampleset = sampler.sample_ising({}, Q, **params)
-
-        print("print(sampleset)")
-        print(sampleset)
-
-        print("print(sampleset.info)")
-        print(sampleset.info)
-
-        print("print(sampleset.data)")
-        print(sampleset.data)
-
-        print("for sample in sampleset: print(sample)")
-        for sample in sampleset: print(sample)
-
-        print("print(dir(sampleset))")
-        print(dir(sampleset))
-
-        #print("print(sampleset.to_pandas_dataframe())")
-        #print(sampleset.to_pandas_dataframe())
-
-        print("print(sampleset.to_serializable())")
-        print(sampleset.to_serializable())
-
-        #print("print(Q.to_numpy_matrix())")
-        #print(Q.to_numpy_matrix())
+    def __init__(self, **kwargs): self.initalize(**kwargs)
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Run Main

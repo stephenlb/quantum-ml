@@ -1,0 +1,739 @@
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Imports
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+import os
+import numpy as np
+
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Main
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+def main():
+    ## Training Data (XOR)
+    data4 = [
+        ['A', 'B', 'Bias', 'Answer'],
+        [ 0,   0,   1,      True,  ],
+        [ 1,   1,   1,      True,  ],
+        [ 0,   0,   1,      True,  ],
+        [ 1,   1,   1,      True,  ],
+        [ 1,   0,   1,      False, ],
+        [ 0,   1,   1,      False, ],
+        [ 1,   0,   1,      False, ],
+        [ 0,   1,   1,      False, ],
+    ]
+    ## XOR
+    data = [
+        ['A', 'B', 'Answer'],
+        [ 0,   0,   True,  ],
+        [ 1,   1,   True,  ],
+        [ 0,   1,   False, ],
+        [ 1,   0,   False, ],
+    ]
+    ## OR
+    data578575 = [
+        ['A', 'B', 'Answer'],
+        [ 0,   0,   False, ],
+        [ 1,   1,   True,  ],
+        [ 1,   0,   True,  ],
+        [ 0,   1,   True,  ],
+    ]
+
+    ## Training Model
+    #nn = NN()
+    #nn.load(data)
+    #print("X%s\n" % nn.X)
+    #print("Y%s\n" % nn.Y)
+    #nn.train()
+
+    ## Predict
+    #prediction = nn.predict(nn.X)
+    #answers    = np.round(prediction)
+    #accuracy   = (1 - np.average(np.abs((np.round(prediction) - nn.Y))))*100
+
+    #print(nn)
+    #print("Results:\n%s"             % prediction)
+    #print("\nAccuracy: %s%%"         % accuracy)
+    #print(np.column_stack((answers, nn.Y)))
+    #print("")
+
+    ## Quantum Model
+    print("Running Quantum Model")
+    qnn = QuantumNN()
+    qnn.load(data)
+
+    #while True:
+    qnn.train()
+
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Basic ML Model using Leaky ReLU
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+class NN():
+    def initalize(self, epochs=500, learning=0.03, units=10, features=3, labels=1):
+        self.epochs    = epochs
+        self.learning  = learning
+        self.results   = {}
+        self.gradients = {}
+
+        f, u, l = features, units, labels
+
+        self.weights   = {
+            'hidden' : np.random.uniform(size=(f, u), low=-0.4), ## Hidden Weights
+            'output' : np.random.uniform(size=(u, l), low=-0.4), ## Output Weights
+        }
+
+    def load(self, data):
+        F = self.F = np.array(data).shape[1]
+        H = self.H = np.array(data[0])                           ## Headers / Column Names
+        X = self.X = np.array([i[0:F-1]      for i in data[1:]]) ## Input Features for Training
+        Y = self.Y = np.array([[int(i[F-1])] for i in data[1:]]) ## Output Labels (Target Answers) for Training
+
+    def train(self):
+        for epoch in range(self.epochs):
+            self.predict(self.X)
+            error = self.Y - self.results['output']
+
+            ## Train Output Layer
+            self.gradients['output'] = error * self.learning
+            self.weights['output']  += np.dot(
+                self.results['hidden'].T,
+                self.gradients['output']
+            )
+
+            ## Train Hidden Layer
+            self.gradients['hidden'] = np.dot(
+                self.gradients['output'],
+                self.weights['output'].T
+            ) * self.relud(self.results['hidden'])
+            self.weights['hidden'] += np.dot(self.X.T, self.gradients['hidden'])
+
+    def predict(self, X):
+        self.results['hidden'] = self.relu(np.dot(X, self.weights['hidden']))
+        self.results['output'] = np.dot(self.results['hidden'], self.weights['output'])
+
+        return self.results['output']
+
+    def relu(self, N):     return np.where(N > 0, N, N * 0.01)
+    def relud(self, N):    return np.where(N > 0, 1, 0)
+    def sigmoid(self, N):  return 1 / (1 + np.exp(-N))
+    def sigmoidd(self, N): return N * (1 - N)
+
+    def __init__(self, **kwargs): self.initalize(**kwargs)
+    def __str__(self):
+        return '\nHidden Layer:\n' + str(self.weights['hidden']) + '\n' + \
+               '\nOutput Layer:\n' + str(self.weights['output']) + '\n'
+
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Quantum ML Model using QUBO
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+class QuantumNN(NN):
+    ##  idea 6: find both valid and invald states iterating all possible
+    ## 
+    ##  idea 5: reward
+    ##   when y=1 and 1 1 = -2 REWARD
+    ##   when y=0 and 1 1 =  1 PUNISH
+
+    def train(self):
+        import neal
+        from dimod import BinaryQuadraticModel, ExactSolver
+
+        X = self.X
+        Y = self.Y
+        Z = np.concatenate((X,Y), axis=1)
+        F = Z.shape[1]
+        M = np.zeros([F,F])
+        Q = {k: v for k, v in np.ndenumerate(M)}
+
+        for row in range(Z.shape[0]):
+            r = Z[row]
+            y = Z[row][-1] ## y concatenated at the end
+            for k, v in np.ndenumerate(M):
+                s1 = r[k[0]]
+                s2 = r[k[1]]
+                p  = -2.0 if y and s1 and s2 else 1.0
+                ## MUST CHECK IF VALID ( is known via Z/X)
+                Q[k] += p
+                print("k%s ... y(%s) and s1(%s) and s2(%s) = Q+=%s = %s" %(
+                    k, y, s1, s2, p, Q[k]
+                ))
+
+        B = BinaryQuadraticModel({}, Q, 0.0, 'BINARY')
+        S = ExactSolver().sample(B)
+        #S = neal.SimulatedAnnealingSampler().sample(B)
+
+        print("Z:\n%s\n"  % Z)
+        print("Q:\n%s\n"  % Q)
+        print("B:\n%s\n"  % B)
+        print(B.to_numpy_matrix()*1.0)
+        print("S:\n%s\n"  % S)
+
+        valid = {"".join(map(str, map(int, x))): 1 for x in Z}
+        PASS  = '\u001b[32mPASS'
+        FAIL  = '\u001b[31mFAIL'
+
+        maxpass = 12
+        passes = 0
+
+        for z in Z:
+            v = "".join(map(str, z))
+            e = B.energy(z)
+            p = e <= 0
+            if p: passes += 1
+            print("%s %s %s\u001b[0m" % (PASS if p else FAIL, v, e))
+
+        for sample in S.data():
+            v = "".join(map(str, list(sample.sample.values())))
+            e = sample.energy
+            p = v in valid and e <= 0.0
+            if p: passes += 1
+            print("%s %s %s\u001b[0m" % (PASS if p else FAIL, v, e))
+    ## 
+    ## 
+    ##  idea 4: tri/quad/etc state (reward when 3+ are matching)
+    ## 
+    ##  idea 1: push Both states ignoring y penalty gate
+    ##  build qubo based on (-1 if x1 and x2 else 1)
+    ##  question:??? reward valid states including negation, or just focus on positive resluts?
+    def trainDarn(self):
+        from dimod import BinaryQuadraticModel, ExactSolver
+
+        X = self.X
+        Y = self.Y
+        Z = np.concatenate((X,Y), axis=1)
+        F = Z.shape[1]
+        # Z[k[0]][0] and<<-- this will add weight to True/False
+        M = np.zeros([F,F])
+        W = np.random.uniform(size=(6,2), low=-10, high=10)
+        Q = {k: v for k, v in np.ndenumerate(M)}
+        for row in range(Z.shape[0]):
+            r = Z[row]
+            y = Z[row][-1] ## y concatenated at the end
+            #if y: continue
+            for k, v in np.ndenumerate(M):
+                s1 = r[k[0]]
+                s2 = r[k[1]]
+                #Q[k] += -1.0 if s1 and s2 else 2.0 if y else -1.0
+                #Q[k] += -5.0 if s1 ^ s2 else 1.0
+                ## Detect the relationship when Y = 1 ( or / xor / and )
+
+                if y:
+                    Q[k] += W[0][0] if s1 and s2 else W[0][1]
+                    Q[k] += W[1][0] if s1 or  s2 else W[1][1]
+                    Q[k] += W[2][0] if s1 ^   s2 else W[2][1]
+                else:
+                    Q[k] -= W[0][0] if s1 and s2 else W[0][1]
+                    Q[k] -= W[1][0] if s1 or  s2 else W[1][1]
+                    Q[k] -= W[2][0] if s1 ^   s2 else W[2][1]
+                ## when the state is valid, reward
+                ## problem detected.  I'm only setting valid states?
+                ## i should probabaly focus on just Y=1?
+                print("k%s ... y(%s) and s1(%s) and s2(%s) = %s" %(
+                    k, y, s1, s2, Q[k]
+                ))
+
+        B = BinaryQuadraticModel({}, Q, 0.0, 'BINARY')
+        S = ExactSolver().sample(B)
+
+        print("Z:\n%s\n"  % Z)
+        print("Q:\n%s\n"  % Q)
+        print("B:\n%s\n"  % B)
+        print(B.to_numpy_matrix()*1.0)
+        print("S:\n%s\n"  % S)
+
+        valid = {"".join(map(str, map(int, x))): 1 for x in Z}
+        PASS  = '\u001b[32mPASS'
+        FAIL  = '\u001b[31mFAIL'
+
+        maxpass = 12
+        passes = 0
+
+        for z in Z:
+            v = "".join(map(str, z))
+            e = B.energy(z)
+            p = e <= 0
+            if p: passes += 1
+            print("%s %s %s\u001b[0m" % (PASS if p else FAIL, v, e))
+
+        for sample in S.data():
+            v = "".join(map(str, list(sample.sample.values())))
+            e = sample.energy
+            p = v in valid and e <= 0.0
+            if p: passes += 1
+            print("%s %s %s\u001b[0m" % (PASS if p else FAIL, v, e))
+
+        if passes == maxpass:
+            print("!!!!!!!!!")
+            print(W)
+            os.exit()
+    ## 
+    ##  idea 2: push only True's then Falses separately
+    ##  build qubo based on (-1 if y and x1 and x2 else 1)
+    ## 
+    ##  idea 3: hidden layer to expand Qubit density with output layer translator
+    ##  input -> QUBO -> Dense QUBO -> QPU -> output -> result
+    ## 
+    ## 
+    ## 
+    ## 
+    ## 
+    ## 
+    ## 
+    ## QUBO solver
+    ## trainging data will gerneate target QUBO (BQM)
+    ## Run sampler 2x, top, bottom
+    ## Train calssical SVM usuing both training data + Qauntum data
+    ## BOOMM!!!!
+    def train57574(self):
+        from dimod import BinaryQuadraticModel, ExactSolver
+        # ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ 
+        #  ◀ ▶ ▲ ▼ ×
+        # ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ 
+        # 
+        #  training data -> QUBO -> top + bottom
+        #  top + bottom -> cSVM
+        # 
+        # 
+        #Z = np.concatenate((X,Y), axis=1)
+        #Q=Q1 = {"".join(map(str, map(int, x))): 1 if y else -1 for x, y in zip(X, Y)}
+        #Q2 = {x: -1 if y else 1 for x, y in np.ndenumerate(Z)}
+        #Q3 = {"".join(map(str, map(int, x[0]))): 1 if y else -1 for x, y in zip(zip(X,X[1:]), Y)}
+        #print("Q1:\n%s\n"  % Q1)
+        #print("Q3:\n%s\n"  % Q3)
+        #Q = {k:    v  for k, v in np.ndenumerate(Xi)}
+        X = self.X
+        Y = self.Y
+        Q = {
+            "".join(map(str, map(int, z))):
+            1 if y else -1
+            for x, y in zip(X, Y)
+            for z in list(enumerate(x)) + list(map(lambda x: x[::-1], list(enumerate(x))[::-1]))
+        }
+        Q= {"".join(map(str, map(int, x))): 1 if y else -1 for x, y in zip(X, Y)}
+        """
+        Q = {
+            "".join(map(str, map(int, z))):
+            1 if y else -1
+            for x, y in zip(X, Y)
+            for x1 in enumerate(x)
+            for x2 in enumerate(x)
+        }
+        """
+        #Q1 = dict()
+
+        #for x, y in zip(X, Y):
+        #    print(x)
+            #for x1, x2 in np.ndenumerate(x + x[::-1]):
+            #    print(x1, x2, y)
+            #for (xi1, xv1), (xi2, xv2) in zip(enumerate(x), enumerate(x[1:])):
+        #    for x1 in enumerate(x):
+        #        for x2 in enumerate(x):
+        #            v1 = x1[0]
+        #            v2 = x2[0]
+            #for x1, x2 in zip(list(enumerate(x))[1], x[1:]):
+        #            print((v1, v2), y)
+            #for x1 in enumerate(x):
+            #    for x2 in enumerate(x[1:]):
+            #for x1, x2 in zip(enumerate(x), enumerate(x[1:])):
+                #print(xi1, xv1, xi2, xv2, y)
+            #        print(x1, x2, y)
+            #print(list(enumerate(x)) + list(map(lambda x: x[::-1], list(enumerate(x))[::-1])))
+        #return
+        #    #print(list(map(reverse, list(enumerate(x)))))
+        #    continue
+        #    for z1, z2 in zip(list(enumerate(x))[1], list(enumerate(x[1:]))[1]):
+        #        print(z1, z2)
+        #return
+        B = BinaryQuadraticModel({}, Q, 0.0, 'BINARY')
+        S = ExactSolver().sample(B)
+
+        #print("Xi:\n%s\n" % Xi)
+        print("X:\n%s\n"  % X)
+        print("Y:\n%s\n"  % Y)
+        print("Q:\n%s\n"  % Q)
+        print("B:\n%s\n"  % B)
+        print("S:\n%s\n"  % S)
+
+
+    ## SVM QUBO Finder ( reqieurs $100's to run 1 time )
+    def trainSVM_QUBO_FINDER(self):
+        from dimod import BinaryQuadraticModel, ExactSolver
+
+        ## for each var, have a weight
+        ## for each pair of vars, have 1 weight
+        ## create a matrix that matches these two
+        X = self.X
+        Y = self.Y
+        Xi = {"".join(map(str, map(int, x))): int(y) for x, y in zip(X, Y)}
+
+        F = X.shape[1]
+        W  = np.random.uniform(size=(F,F*2), low=-1)
+        W1 = np.random.uniform(size=(F*2,F), low=-1)
+        Wq = np.random.uniform(size=(F,F),   low=-1)
+        Wo = np.random.uniform(size=(F,1),   low=-1)
+        self.weights['hidden'] = W
+        self.weights['output'] = Wo
+
+        # ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ 
+        #  ◀ ▶ ▲ ▼ ×
+        # ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ 
+        # 
+        #          (Quantum)     (Output)
+        #   2×2 ▶ ▶ Q ▶ ▶ ▶ ▶ ▶ ▶ O X(2×4) Y(1×4)
+        #    ▲                    ▼
+        #    ▲                    ▼
+        #  10×2                   ▼
+        #    ▲                    ▼
+        #    ▲                    ▼
+        #  10×10                  ▼
+        #    ▲                    ▼
+        #    ▲                    ▼
+        #  10×4 ◀ ◀ ◀ ◀ ◀ ◀ ◀ ◀ ◀ O
+        # 
+        # ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ ⎺ 
+        #  YOU CAN HAVE TWO OPUT LAYERS AND TRAIN BOTH!!!
+        # ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ 
+        # 
+        # 
+        # 
+        #                   F×1 (cSVM)
+        #                    ▲
+        #                    ▲
+        #   F×B ▶ ▶ 10×F ▶ ▶ F×F ▶ ▶ Q ▶ ▶ O X(2×4) Y(1×4)
+        #                            ▼
+        #                            ▼
+        #                  ◀◀◀◀◀◀◀◀◀ O 
+        # 
+
+        for i in range(50000):
+            Q = {k:    v * 1.0 for k, v in np.ndenumerate(W)}
+            B = BinaryQuadraticModel({}, Q, 0.0, 'BINARY')
+            S = ExactSolver().sample(B)
+            #print("X:\n%s\n" % X)
+            #print("Xi:\n%s\n" % Xi)
+            #print("Y:\n%s\n" % Y)
+            #print("H: %s\n" % H)
+            print("W:\n%s\n" % W)
+            #print("Q:\n%s\n" % Q)
+            #print("B:\n%s\n" % B)
+            #print(B.to_numpy_matrix()*1.0)
+            print("\nS:\n%s\n" % S)
+            ## create index for answers
+            #for s in S:
+            #    print(s.engergy)
+            #Oi = {"".join(map(str, s.sample.values())): s.energy for s in S.data()}
+            #print("Oi:\n%s\n" % Oi)
+            Ys = np.array([[s.energy] for s in S.data()])
+            Xs = np.array([list(s.sample.values()) for s in S.data()])
+            Yp = np.array([[Xi.get("".join(map(str, x)), 1e-9)] for x in Xs])
+            Yt = np.where(Yp, -2, 2)
+
+            ## error
+            error = Yt - Ys
+
+            self.results['hidden'] = self.sigmoid(Xs.dot(self.weights['hidden']))
+            self.results['output'] = self.results['hidden'].dot(self.weights['output'])
+
+            #print("results['hidden']:\n%s\n" % self.results['hidden'])
+            #print("results['output']:\n%s\n" % self.results['output'])
+            #print("Xso:\n%s\n" % Xso)
+
+            #print("Ys:\n%s\n" % Ys)
+            #print("Yp:\n%s\n" % Yp)
+            #print("Yt:\n%s\n" % Yt)
+            #print("error:\n%s\n" % error)
+            #print("Xs:\n%s\n" % Xs)
+
+            ## Train Output Layer
+            self.gradients['output'] = error * 0.2 #self.learning
+            self.weights['output'] += np.dot(
+                self.results['hidden'].T,
+                self.gradients['output']
+            )
+
+            ## Train Hidden Layer
+            self.gradients['hidden'] = np.dot(
+                self.gradients['output'],
+                self.weights['output'].T
+            ) * self.sigmoidd(self.results['hidden'])
+            self.weights['hidden'] += np.dot(self.X.T, self.gradients['hidden'])
+
+            #print("W:\n%s\n" % W)
+            #print("self.weights['hidden']:\n%s\n" % self.weights['hidden'])
+
+
+            ## train quantum layer
+            ## train classical NN using Quantum Layer in front prob, maybe in back, or sandwich
+
+            ## align output with target values based on result samples
+            ## subtract to get corrections * learning rate
+            ## 
+
+    ## this isn't working as desired, prob need to create a learn matrix
+    def train475(self):
+        from dimod import BinaryQuadraticModel, ExactSolver
+        ## iterate training data to calculate penalties for each feature pair
+        X = self.X
+        Y = self.Y
+        Q = {tuple(x) : 2 if y[0] else -4 for x, y in zip(X, Y)}
+        B = BinaryQuadraticModel({}, Q, 0.0, 'BINARY')
+        S = ExactSolver().sample(B)
+
+        print("X:\n%s\n" % X)
+        print("Y:\n%s\n" % Y)
+        print("Q:\n%s\n" % Q)
+        print(B.to_numpy_matrix()*1.0)
+        print("\nS:\n%s\n" % S)
+
+
+
+    def trainX(self):
+        from dimod import BinaryQuadraticModel, ExactSolver
+        
+        X = self.X
+        O = self.predict(X)
+        Q = {k:    v * 1.0 for k, v in np.ndenumerate(O)}
+        B = BinaryQuadraticModel({}, Q, 0.0, 'BINARY')
+        S = ExactSolver().sample(B)
+        print("X: %s\n" % X)
+        print("O: %s\n" % O)
+        print("Q: %s\n" % Q)
+        print("B: %s\n" % B)
+        print("Numpy: %s\n" % (B.to_numpy_matrix()*1.0))
+        print("\nSamples: \n%s\n" % S)
+        return
+
+
+
+        X = self.X
+        Y = self.Y
+        #Z = np.concatenate((X,Y), axis=1)
+        H = X.shape[1]
+        W = np.random.uniform(size=(H,H), low=-1)
+        Q = {k:    v * 1.0 for k, v in np.ndenumerate(W)}
+        B = BinaryQuadraticModel({}, Q, 0.0, 'BINARY')
+        S = ExactSolver().sample(B)
+        print("Y%s\n" % Y)
+        print("W%s\n" % W)
+        print("Q%s\n" % Q)
+        print("B%s\n" % B)
+        print(B.to_numpy_matrix()*1.0)
+        print("\nS%s\n" % S)
+
+
+
+        #Z = np.concatenate((X,Y), axis=1)
+        #J = np.random.uniform(size=H, low=-1.0)
+        #N x (N-1) / 2 ## relationships
+        #Q = {k: 1.0 for k in (range(H),range(H))}
+        #Q = {(r,j): 1.0 for j in range(r, H) for r in range(H) if i != j}
+        Q = {(r,m): np.random.uniform(low=-1.0) for m in range(H) for r in range(H)}
+        B = BinaryQuadraticModel({}, Q, 0.0, 'BINARY')
+        S = ExactSolver().sample(B)
+
+        print("X%s\n" % X)
+        print("Y%s\n" % Y)
+        print("Z%s\n" % Z)
+        print("Q%s\n" % Q)
+
+        return
+        #Y = np.where(self.Y, -1, 1)
+        #W = Z.T.dot(Z)
+        W = X
+        J = {k[0]: v * 1.0 for k, v in np.ndenumerate(W)}
+        Q = {k:    v * 1.0 for k, v in np.ndenumerate(W)}
+        B = BinaryQuadraticModel(J, Q, 0.0, 'BINARY')
+        S = ExactSolver().sample(B)
+
+        print("W%s\n" % W)
+        print("Q%s\n" % Q)
+        print("B%s\n" % B)
+        print(B.to_numpy_matrix()*1.0)
+        print("\nS%s\n" % S)
+
+        
+    def train4(self):
+        import neal
+        import dimod
+        from dwave.system import EmbeddingComposite, DWaveSampler
+
+        X = self.X
+        Y = self.Y
+        print("X\n%s\n" % X)
+        print("Y\n%s\n" % Y)
+
+        ## TODO - 
+        ## TODO - figure out different ways to build Q and y...
+        ## TODO - consider generating Weights and using the MM output as Q.
+        ## TODO - 
+
+        #w = np.random.uniform(size=(4, 6), low=0)
+
+        #q = X.dot(X.T).dot(w)
+        #q = X.dot(X.T)#.dot(w)
+        #q = X
+        #x = np.where(X, 1, 0)
+        x = X
+        q = x#.dot(x.T)
+        #Q = dict()
+        #y = Y.T.dot(q).T
+        #y = np.where(Y == 0, 0, 2)
+        #y = np.where(Y, 1, -1)#.T.dot(q)
+        y = Y
+        j = {k[0]: v * 1.0 for k, v in np.ndenumerate(y)}
+        Q = {k:    v * 1.0 for k, v in np.ndenumerate(q)}
+
+        #print("w\n%s\n" % w)
+        print("q\n%s\n" % q)
+        print("x\n%s\n" % x)
+        print("y\n%s\n" % y)
+        print("j\n%s\n" % j)
+        print("Q\n%s\n" % Q)
+
+        bqm = dimod.BinaryQuadraticModel(j, Q, 0.0, dimod.BINARY)
+
+        print("BQM")
+        print(bqm.to_numpy_matrix()*1.0)
+
+        params = {
+            'num_reads': 1000,
+            #'num_spin_reversal_transforms': 10,
+            #'annealing_time': 10,
+            'postprocess': 'sampling',
+        }
+
+        #solver  = EmbeddingComposite(DWaveSampler(token=os.getenv('DWAVE_API_KEY')))
+        #samples = solver.sample(bqm, **params)
+        solver  = dimod.ExactSolver()
+        samples = solver.sample(bqm)
+
+        print("\nsamples")
+        print(samples)
+
+        simulator = neal.SimulatedAnnealingSampler()
+        samples   = simulator.sample(bqm)
+        print(samples)
+
+    def train3(self):
+        import neal
+        import dimod
+        from dwave_qbsolv import QBSolv
+        from dwave.system import LeapHybridSampler
+        from dwave.system import EmbeddingComposite
+
+        #Q = {(0, 0): 1, (1, 1): 1, (0, 1): 1}
+        Q1 = {
+            (0, 0): 1, (0, 1): 1, (0, 2): 1, (0, 3): 1,
+            (1, 0): 1, (1, 1): 1, (1, 2): 1, (1, 3): 1,
+            (2, 0): 1, (2, 1): -1, (2, 2): 1, (2, 3): 1,
+            (3, 0): -1, (3, 1): -1, (3, 2): 1, (3, 3): 1,
+            (4, 0): 1, (4, 1): -1, (4, 2): 1, (4, 3): 1,
+            (5, 0): 1, (5, 1): -1, (5, 2): -1, (5, 3): 1,
+            (6, 0): 1, (6, 1): -1, (6, 2): -1, (6, 3): 1,
+            (7, 0): 1, (7, 1): -1, (7, 2): -1, (7, 3): 1,
+        }
+        Q2 = {
+            (0, 0): -1, (0, 1): 1, (0, 2): 1, (0, 3): 1, (0, 4): 1, (0, 5): 1,
+            (1, 0): 1, (1, 1): -1, (1, 2): 1, (1, 3): 1, (1, 4): 1, (1, 5): 1,
+            #(2, 0): 1, (2, 1): 1, (2, 2): 1, (2, 3): 1, (2, 4): 1, (2, 5): 1,
+            #(3, 0): 1, (3, 1): 1, (3, 2): 1, (3, 3): 1, (3, 4): 1, (3, 5): 1,
+            #(4, 0): 1, (4, 1): 1, (4, 2): 1, (4, 3): 1, (4, 4): 1, (4, 5): 1,
+            #(5, 0): 1, (5, 1): 1, (5, 2): 1, (5, 3): 1, (5, 4): 1, (5, 5): 1,
+            #(6, 0): 1, (6, 1): 1, (6, 2): 1, (6, 3): 1, (6, 4): 1, (6, 5): 1,
+            #(7, 0): 1, (7, 1): 1, (7, 2): 1, (7, 3): 1, (7, 4): 1, (7, 5): 1,
+        }
+        Q3 = {
+             ('A','A'):  1,
+             ('A','B'): -1,
+             ('B','A'): -1,
+             ('B','B'):  1,
+             ('C','C'):  1,
+             ('C','A'):  1,
+             ('C','B'):  1,
+             ('D','D'):  1,
+             ('D','A'):  1,
+             ('D','B'):  1,
+             ('D','C'):  1,
+        }
+
+        hybrid    = LeapHybridSampler()
+        simulator = neal.SimulatedAnnealingSampler()
+        exact     = dimod.ExactSolver()
+        solver    = QBSolv()
+        #response = exact.sample_qubo(Q2)
+        response  = exact.sample_qubo(
+            Q3,
+            #solver=simulator,
+            #solver=simulator,
+            #num_reads=1000,
+            #postprocess='sampling'
+        )
+
+        print(response)
+        print(response.info)
+        print("samples=%s" % list(response.samples()))
+        print("energies=%s" % list(response.data_vectors['energy']))
+        #for sample in response[0:2]: print(sample)
+        samples = np.array([[samp[k] for k in range(6)] for samp in response])
+        print(samples)
+        #print(response.data)
+
+    def train2(self):
+        from dwave.system import EmbeddingComposite, DWaveSampler
+        from dwave.system.samplers import LeapHybridSampler
+
+        Q = {('A','A'):   1,
+             ('A','B'):  -1,
+             ('B','A'):  -1,
+             ('B','B'):   1,
+             ('C','C'):   1,
+             ('C','A'):   1,
+             ('C','B'):   1}
+
+        # Define the sampler that will be used to run the problem
+        ## """solver={'qpu': True})"""
+        ## LeapHybridSampler
+        print(os.getenv('DWAVE_API_KEY'))
+        sampler = EmbeddingComposite(DWaveSampler(token=os.getenv('DWAVE_API_KEY')))
+
+        ## Quantum QPU Paramaters
+        params = {
+            'num_reads': 1000,
+            #'auto_scale': True,
+            #'answer_mode': 'histogram',
+            #'num_spin_reversal_transforms': 10,
+            #'annealing_time': 10,
+            #'postprocess':'optimization',
+            'postprocess': 'sampling',
+        }
+
+        # Run the problem on the sampler and print the results
+        # postprocess='sampling' answer_mode='histogram',
+        sampleset = sampler.sample_qubo(Q, **params)
+        #sampleset = sampler.sample_ising({}, Q, **params)
+
+        print("print(sampleset)")
+        print(sampleset)
+
+        print("print(sampleset.info)")
+        print(sampleset.info)
+
+        print("print(sampleset.data)")
+        print(sampleset.data)
+
+        print("for sample in sampleset: print(sample)")
+        for sample in sampleset: print(sample)
+
+        print("print(dir(sampleset))")
+        print(dir(sampleset))
+
+        #print("print(sampleset.to_pandas_dataframe())")
+        #print(sampleset.to_pandas_dataframe())
+
+        print("print(sampleset.to_serializable())")
+        print(sampleset.to_serializable())
+
+        #print("print(Q.to_numpy_matrix())")
+        #print(Q.to_numpy_matrix())
+
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Run Main
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+if __name__ == "__main__": main()
