@@ -19,24 +19,26 @@ def main():
     features = [[1,1],[0,0],[1,0],[0,1]]
     labels   = [ [1],  [1],  [0],  [0] ]
 
-    nn = ClassicalNN(learn=0.1, bias=0.1, density=5, high=5, low=-5)
-    nn.data(features=features, labels=labels)
+    nn = ClassicalNN(learn=0.1, bias=0.1, density=1, high=5, low=-5)
+    nn.load(features=features, labels=labels)
+    print(nn.predict(features))
     print(nn.dumps())
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Neural Network as a Support Vector Machine
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class NeuralNetwork():
-    def initalize(self, learn=0.1, bias=0.1, density=5, high=5, low=-5):
-        self.learn    = learn
-        self.bias     = bias
-        self.density  = density
-        self.high     = high
-        self.low      = low
-        self.features = None
-        self.labels   = None
-        self.unbuilt  = []
-        self.layers   = []
+    def initalize(self, learn=0.1, batch=10, bias=0.1, density=5, high=5, low=-5):
+        self.batch    = batch   ## batch size
+        self.learn    = learn   ## learning rate
+        self.bias     = bias    ## bias node starting value
+        self.density  = density ## number of units "neurons"
+        self.high     = high    ## initial weights upper limit
+        self.low      = low     ## initial weights lower limit
+        self.features = None    ## input training features
+        self.labels   = None    ## output training labels
+        self.unbuilt  = []      ## prototype of neural network layers
+        self.layers   = []      ## fully built network after data load
 
     def build(self):
         shape = (self.shape[0], self.density * self.shape[0], self.shape[1])
@@ -44,8 +46,8 @@ class NeuralNetwork():
             layer.builder(
                 name=layer.name,
                 size=(
-                    shape[0] if i == 0                  else shape[1],
-                    shape[2] if i == len(self.layers)-1 else shape[1]
+                    shape[0] if i == 0                   else shape[1],
+                    shape[2] if i == len(self.unbuilt)-1 else shape[1]
                 ),
                 high=self.high,
                 low=self.low,
@@ -81,7 +83,7 @@ class NeuralNetwork():
         ,   activation=activation
         ))
 
-    def data(
+    def load(
         self,
         features=[[1,1],[0,0],[1,0],[0,1]],
         labels=  [ [1],  [1],  [0],  [0] ]
@@ -98,10 +100,21 @@ class NeuralNetwork():
         if not len(self.layers):
             print("Uninitialized Neural Network")
             return
-        pass
 
-    def predict(self, data):
-        pass
+    def predict(self, features):
+        bias   = np.full((len(features), 1), self.bias)
+        train  = np.concatenate((np.array(features),bias), axis=1)
+        result = train
+
+        for layer in self.layers:
+            result = layer.result = layer.activator(
+                result.dot(layer.weights)
+            )
+
+        return self.layers[-1].result
+        #self.results['hidden'] = self.relu(np.dot(X, self.weights['hidden']))
+        #self.results['output'] = np.dot(self.results['hidden'], self.weights['output'])
+        #return self.results['output']
 
     def __init__(self, **kwargs): self.initalize(**kwargs)
 
@@ -121,7 +134,12 @@ class QuantumDeepNN(NeuralNetwork):
 ## Deep Classical SVM Neural Network as a Support Vector Machine
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class DeepNN(NeuralNetwork):
-    def __init__(self, **kwargs): self.initalize(**kwargs)
+    def __init__(self, **kwargs):
+        self.initalize(**kwargs)
+        self.add(StandardLayer, name='Hidden One',   activation='lrelu')
+        self.add(StandardLayer, name='Hidden Two',   activation='lrelu')
+        self.add(StandardLayer, name='Hidden Three', activation='lrelu')
+        self.add(StandardLayer, name='Output',       activation='linear')
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Classical SVM Neural Network as a Support Vector Machine
@@ -171,17 +189,17 @@ class BaseLayer():
     def forward(self): pass
     def bacwkard(self): pass
 
-    def linear(self, N):   return N
-    def lineard(self, N):  return N
+    def linear(N):   return N
+    def lineard(N):  return N
 
-    def relu(self, N):     return np.where(N > 0, N, 0)
-    def relud(self, N):    return np.where(N > 0, 1, 0)
+    def relu(N):     return np.where(N > 0, N, 0)
+    def relud(N):    return np.where(N > 0, 1, 0)
 
-    def lrelu(self, N):    return np.where(N > 0, N, N * 0.01)
-    def lrelud(self, N):   return np.where(N > 0, 1, 1e-9)
+    def lrelu(N):    return np.where(N > 0, N, N * 0.01)
+    def lrelud(N):   return np.where(N > 0, 1, 1e-9)
 
-    def sigmoid(self, N):  return 1 / (1 + np.exp(-N))
-    def sigmoidd(self, N): return N * (1 - N)
+    def sigmoid(N):  return 1 / (1 + np.exp(-N))
+    def sigmoidd(N): return N * (1 - N)
 
     """
     def activation(self, method):
