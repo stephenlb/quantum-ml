@@ -20,10 +20,10 @@ def main():
     labels   = [ [1],  [1],  [0],  [0] ]
 
     nn = ClassicalNN(learn=0.1, bias=0.1, density=1, high=5, low=-5)
-    nn.save()
+    #nn.saveJSON()
     nn.load(features=features, labels=labels)
     print(nn.predict(features))
-    print(nn.dumps())
+    print(nn.saveJSON())
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Neural Network as a Support Vector Machine
@@ -56,8 +56,21 @@ class NeuralNetwork():
             ) for i, layer in enumerate(self.unbuilt)
         ]
 
+    def load(
+        self,
+        features=[[1,1],[0,0],[1,0],[0,1]],
+        labels=  [ [1],  [1],  [0],  [0] ]
+    ):
+        s, f, l       = len(features), len(features[0]) + 1, len(labels[0])
+        self.features = np.array(features) + np.full((s, 1), self.bias)
+        self.labels   = np.array(labels)
+        self.length   = len(features)
+        self.shape    = (f, l)
+
+        self.build()
+
     ## TODO
-    def loads(self, data):
+    def loadJSON(self, data):
         pass
         ## TODO
         #layers = json.loads(data)
@@ -65,7 +78,7 @@ class NeuralNetwork():
         ## ... import layers
         #self.build()
 
-    def save(self):
+    def saveJSON(self):
         if not len(self.layers):
             raise Exception("Uninitialized Network: use network.load(...)")
 
@@ -82,19 +95,6 @@ class NeuralNetwork():
         ,   name=name
         ,   activation=activation
         ))
-
-    def load(
-        self,
-        features=[[1,1],[0,0],[1,0],[0,1]],
-        labels=  [ [1],  [1],  [0],  [0] ]
-    ):
-        s, f, l       = len(features), len(features[0]) + 1, len(labels[0])
-        self.features = np.array(features) + np.full((s, 1), self.bias)
-        self.labels   = np.array(labels)
-        self.length   = len(features)
-        self.shape    = (f, l)
-
-        self.build()
 
     def train(self, data):
         if not len(self.layers):
