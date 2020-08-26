@@ -7,6 +7,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 #import neal
 #import dimod
+import mnist
+
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Training Data
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+train_images = mnist.train_images()
+train_labels = mnist.train_labels()
+test_images  = mnist.test_images()
+test_labels  = mnist.test_labels()
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Configuration
@@ -17,15 +26,32 @@ DWAVE_API_KEY = os.getenv('DWAVE_API_KEY')
 ## Main
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 def main():
-    features = [[1,1],[0,0],[1,0],[0,1]]
-    labels   = [ [1],  [1],  [0],  [0] ]
+    resolution = len(train_images[0]) * len(train_images[0])
+    labels     = [[l] for l in train_labels[0:10]]
+    features   = [
+        np.where(np.reshape(symbol, resolution) > 1, 1, 0)
+        for symbol in train_images[0:10]
+    ]
+
+    print(features[0])
+    print(len(features[0]))
+    print(labels)
+
+    ## TODO
+    ## convert featuers into 1d array and use 1 or 0 instead of rgb
+    ## "CONSIDER"
+    ##  convert labels to 1 hot
+
+    #return
+    #features = [[1,1],[0,0],[1,0],[0,1]]
+    #labels   = [ [1],  [1],  [0],  [0] ]
 
     nn = DeepNN(
         learn=0.01
     ,   epochs=1000
     ,   batch=10
     ,   bias=1
-    ,   density=6
+    ,   density=3
     ,   high=2.0
     ,   low=-2.0
     )
@@ -35,7 +61,8 @@ def main():
     print(np.array(nn.loss))
     print(np.column_stack((
         results
-    ,   np.where(results > 0.5, 1, 0)
+    #,   np.where(results > 0.5, 1, 0)
+    ,   np.round(results)
     ,   np.array(labels)
     )))
 
@@ -193,11 +220,11 @@ class DeepNN(NeuralNetwork):
         #self.add(StandardLayer, name='Sigmoid',       activation='essigmoid')
         #self.add(StandardLayer, name='ReLU',          activation='relu')
         #self.add(StandardLayer, name='LeakyReLU',     activation='lrelu')
-        #self.add(StandardLayer, name='Sigmoid',       activation='esigmoid')
+        self.add(StandardLayer, name='ElliotSigmoid', activation='esigmoid')
         #self.add(StandardLayer, name='LeakyReLU',     activation='lrelu')
         #self.add(StandardLayer, name='Sigmoid',       activation='sigmoid')
-        self.add(StandardLayer, name='ElliotSigmoid', activation='esigmoid')
-        self.add(StandardLayer, name='ElliotSigmoid', activation='esigmoid')
+        #self.add(StandardLayer, name='ElliotSigmoid', activation='esigmoid')
+        #self.add(StandardLayer, name='ElliotSigmoid', activation='esigmoid')
         self.add(StandardLayer, name='Output',        activation='linear')
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=

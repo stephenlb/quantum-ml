@@ -1,2 +1,3 @@
 numpy==1.19.1
+mnist==0.2.2
 dwave-ocean-sdk==2.4.0
