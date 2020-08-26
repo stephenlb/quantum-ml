@@ -21,13 +21,13 @@ def main():
     labels   = [ [1],  [1],  [0],  [0] ]
 
     nn = DeepNN(
-        learn=0.005
-    ,   epochs=900
+        learn=0.01
+    ,   epochs=1000
     ,   batch=10
     ,   bias=1
-    ,   density=3
-    ,   high=3.0
-    ,   low=-3.0
+    ,   density=6
+    ,   high=2.0
+    ,   low=-2.0
     )
     nn.load(features=features, labels=labels)
     nn.train()
@@ -39,10 +39,9 @@ def main():
     ,   np.array(labels)
     )))
 
-    #fig, ax = plt.subplots(nrows=1, ncols=1, sharex=True)
-    #fig.suptitle('Loss')
-    #y = x = [x for x in range(len(nn.loss))]
-    #ax.errorbar(x, nn.loss, yerr=nn.loss)
+    #x = [x for x in range(len(nn.loss))]
+    #plt.errorbar(x, nn.loss, yerr=nn.loss, errorevery=100)
+    #plt.yscale('log')
     #plt.show()
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -73,7 +72,7 @@ class NeuralNetwork():
         self.loss      = []      ## loss from most recent training
 
     def build(self):
-        layers = len(self.unbuilt)-1
+        layers = len(self.unbuilt) - 1
         shape  = (self.shape[0], self.density * self.shape[0], self.shape[1])
         self.layers = [
             layer.builder(
@@ -88,22 +87,15 @@ class NeuralNetwork():
             ) for i, layer in enumerate(self.unbuilt)
         ]
 
-    def load(
-        self
-    ,   features=[[1,1],[0,0],[1,0],[0,1]]
-    ,   labels=  [ [1],  [1],  [0],  [0] ]
-    ):
+    def load(self, features=[[1],[0]], labels=[[1],[0]]):
         s, f, l       = len(features), len(features[0]) + 1, len(labels[0])
         bias          = np.full((len(features), 1), self.bias)
         self.features = np.concatenate((features, bias), axis=1)
         self.labels   = np.array(labels)
         self.length   = len(features)
         self.shape    = (f, l)
-
         self.build()
 
-    ## TODO
-    ## TODO
     ## TODO
     ## TODO
     def loadJSON(self, data):
@@ -116,7 +108,6 @@ class NeuralNetwork():
 
     def saveJSON(self):
         if not self.initalized(): return
-
         return json.dumps([{
             'name'       : layer.name
         ,   'type'       : layer.type
@@ -135,17 +126,14 @@ class NeuralNetwork():
         if not len(self.layers):
             raise Exception("Uninitialized Network: use network.load(...)")
             return False
-
         return True
         
     def batcher(self):
         features = []
         labels   = []
-
         for index in np.random.randint(self.length, size=self.batch):
             features.append(self.features[index])
             labels.append(self.labels[index])
-
         return np.array(features), np.array(labels)
         
     def train(self):
@@ -153,10 +141,8 @@ class NeuralNetwork():
 
         for epoch in range(self.epochs):
             features, labels = self.batcher()
-
-            result   = self.forward(features)
+            result = self.forward(features)
             gradient = 2 * (result - labels)
-
             self.backward(gradient)
             self.optimize()
             self.loss.append(np.sum(gradient) ** 2)
@@ -164,26 +150,17 @@ class NeuralNetwork():
     def predict(self, features):
         bias   = np.full((len(features), 1), self.bias)
         inputs = np.concatenate((np.array(features), bias), axis=1)
-
         return self.forward(inputs)
 
     def forward(self, inputs):
         if not self.initalized(): return
-
         for layer in self.layers:
             inputs = layer.forward(inputs)
-
         return self.layers[-1].result
 
-    ## TODO embed in Layer (cuz we have different kinds of layers!)
-    ## TODO embed in Layer (cuz we have different kinds of layers!)
-    ## TODO embed in Layer (cuz we have different kinds of layers!)
-    ## TODO embed in Layer (cuz we have different kinds of layers!)
     def backward(self, gradient):
         for layer in self.layers[::-1]:
-            layer.gradient = layer.input.T @ gradient
-            gradient       = gradient.dot(layer.weights.T) * layer.derivative(layer.input)
-
+            gradient = layer.backward(gradient)
         return gradient
 
     def optimize(self):
@@ -210,14 +187,18 @@ class QuantumDeepNN(NeuralNetwork):
 class DeepNN(NeuralNetwork):
     def __init__(self, **kwargs):
         self.initalize(**kwargs)
-        #self.add(StandardLayer, name='ReLU',      activation='relu')
-        #self.add(StandardLayer, name='LeakyReLU', activation='lrelu')
-        self.add(StandardLayer, name='Sigmoid',   activation='sigmoid')
-        self.add(StandardLayer, name='Sigmoid',   activation='sigmoid')
-        self.add(StandardLayer, name='Sigmoid',   activation='sigmoid')
-        self.add(StandardLayer, name='Sigmoid',   activation='sigmoid')
-        self.add(StandardLayer, name='Sigmoid',   activation='sigmoid')
-        self.add(StandardLayer, name='Output',    activation='linear')
+        #self.add(StandardLayer, name='Tanh',          activation='tanh')
+        #self.add(StandardLayer, name='Sigmoid',       activation='sigmoid')
+        #self.add(StandardLayer, name='Sigmoid',       activation='esigmoid')
+        #self.add(StandardLayer, name='Sigmoid',       activation='essigmoid')
+        #self.add(StandardLayer, name='ReLU',          activation='relu')
+        #self.add(StandardLayer, name='LeakyReLU',     activation='lrelu')
+        #self.add(StandardLayer, name='Sigmoid',       activation='esigmoid')
+        #self.add(StandardLayer, name='LeakyReLU',     activation='lrelu')
+        #self.add(StandardLayer, name='Sigmoid',       activation='sigmoid')
+        self.add(StandardLayer, name='ElliotSigmoid', activation='esigmoid')
+        self.add(StandardLayer, name='ElliotSigmoid', activation='esigmoid')
+        self.add(StandardLayer, name='Output',        activation='linear')
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Classical SVM Neural Network as a Support Vector Machine
@@ -250,7 +231,7 @@ class BaseLayer():
     ,   size=(5,5)
     ,   high=5
     ,   low=-5
-    ,   activation='lrelu'
+    ,   activation='esigmoid'
     ):
         self.name       = name
         self.type       = 'undefined'
@@ -268,19 +249,33 @@ class BaseLayer():
         self.result = self.activator(inputs @ self.weights)
         return self.result
 
-    def backward(self): pass
+    def backward(self, gradient):
+        self.gradient = self.input.T @ gradient
+        return gradient.dot(self.weights.T) * self.derivative(self.input)
 
-    def linear(N):   return N
-    def lineard(N):  return N
+    def binary(N):     return np.where(N > 0.5, 1, 0)
+    def binaryd(N):    return np.where(N > 0.5, 1, 0)
 
-    def relu(N):     return np.where(N > 0, N, 0)
-    def relud(N):    return np.where(N > 0, 1, 0)
+    def linear(N):     return N
+    def lineard(N):    return N
 
-    def lrelu(N):    return np.where(N > 0, N, N * 0.5)
-    def lrelud(N):   return np.where(N > 0, 1, N * 0.01)
+    def relu(N):       return np.where(N > 0, N, 0)
+    def relud(N):      return np.where(N > 0, 1, 0)
 
-    def sigmoid(N):  return 1 / (1 + np.exp(-N))
-    def sigmoidd(N): return N * (1 - N)
+    def lrelu(N):      return np.where(N > 0, N, N * 0.01)
+    def lrelud(N):     return np.where(N > 0, 1,     0.01)
+
+    def tanh(N):       return np.tanh(N)
+    def tanhd(N):      return 1 - N ** 2
+
+    def sigmoid(N):    return 1 / (1 + np.exp(-N))
+    def sigmoidd(N):   return N * (1 - N)
+
+    def esigmoid(N):   return 1 / (1 + np.abs(N))
+    def esigmoidd(N):  return 1 / (1 + np.abs(N)) ** 2
+
+    def essigmoid(N):  return 0.5 * N / (1 + np.abs(N)) + 0.5
+    def essigmoidd(N): return 1 / (1 + np.abs(N)) ** 2
 
     def __init__(self, **kwargs): self.initalize(**kwargs)
 
