@@ -1,15 +1,15 @@
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Imports
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+import ai
 import numpy as np
 import matplotlib.pyplot as plt
 import mnist
-import ai
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-## Classical Deep MNIST Model
+## Classical MNIST Model
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-class DeepMNIST(ai.NeuralNetwork):
+class ClassicalMNIST(ai.NeuralNetwork):
     def initalize(self):
         super().initalize(
             learn   =  0.0002
@@ -39,7 +39,7 @@ def main():
         for symbol in train_images
     ]
 
-    nn = DeepMNIST()
+    nn = ClassicalMNIST()
     nn.load(features=features, labels=labels)
     nn.train(progress=lambda epoch : print(epoch, np.average(nn.loss)))
     results = nn.predict(features)

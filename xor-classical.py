@@ -1,22 +1,20 @@
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Imports
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-import numpy as np
-import matplotlib.pyplot as plt
-import mnist
 import ai
+import numpy as np
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-## Classical Deep MNIST Model
+## Classical XOR Model
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-class DeepMNIST(ai.NeuralNetwork):
+class ClassicalXOR(ai.NeuralNetwork):
     def initalize(self):
         super().initalize(
-            learn   =  0.0002
-        ,   epochs  =  1000
+            learn   =  0.02
+        ,   epochs  =  2000
         ,   batch   =  10
-        ,   bias    =  0.1
-        ,   density =  2
+        ,   bias    =  1
+        ,   density =  6
         ,   high    =  2.0
         ,   low     = -2.0
         )
@@ -29,35 +27,19 @@ class DeepMNIST(ai.NeuralNetwork):
 ## Main
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 def main():
-    samples      = 20
-    train_images = mnist.train_images()[0:samples]
-    train_labels = mnist.train_labels()[0:samples]
-    resolution   = len(train_images[0]) * len(train_images[0])
-    labels       = [[1 if l > 4 else 0] for l in train_labels]
-    features     = [
-        np.where(np.reshape(symbol, resolution) > 1, 1, 0)
-        for symbol in train_images
-    ]
+    features = [[1,1],[0,0],[1,0],[0,1]]
+    labels   = [ [1],  [1],  [0],  [0] ]
 
-    nn = DeepMNIST()
+    nn = ClassicalXOR()
     nn.load(features=features, labels=labels)
     nn.train(progress=lambda epoch : print(epoch, np.average(nn.loss)))
     results = nn.predict(features)
 
-    print(features[0])
-    print(len(features[0]))
-    print(labels)
-    print(np.array(nn.loss))
     print(np.column_stack((
         results
     ,   np.round(results)
     ,   np.array(labels)
     )))
-
-    #x = [x for x in range(len(nn.loss))]
-    #plt.errorbar(x, nn.loss, yerr=nn.loss, errorevery=100)
-    #plt.yscale('log')
-    #plt.show()
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Run Main
