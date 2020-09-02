@@ -316,14 +316,25 @@ class QuantumOutputLayer(BaseLayer):
 class QuantumSimulatorLayer(BaseLayer):
     def initalize(self, **kwargs):
         super().initalize(**kwargs)
-        self.type    = 'quantum-simulator'
-        self.qubo    = None
-        self.bqm     = None
-        #self.weights = Tensor(size=size, high=high, low=low).matrix
+        self.type     = 'quantum-simulator'
+        self.qubo     = None
+        self.bqm      = None
+        size          = self.weights.shape[0]
+        self.hidden   = StandardLayer(
+            name="Quantum Weights"
+        ,   size=(size,size)
+        ,   activation='sigmoid'
+        #,   activation='linear'
+        ,   high=2.0
+        ,   low=-2.0
+        )
 
-    #def backward(self, gradient):
-    #    self.gradient = self.input.T @ gradient
-    #    return (gradient.T @ self.weights) * self.derivative(self.input)
+    def backward(self, gradient):
+        self.gradient = self.input.T @ gradient
+        gradient = (gradient @ self.weights.T) * self.derivative(self.input)
+        gradient = self.hidden.backward(gradient)
+        self.hidden.weights -= 0.02 * self.hidden.gradient
+        return gradient
 
     #def backward(self, gradient):
     #    self.gradient = self.input.T @ gradient
@@ -334,24 +345,91 @@ class QuantumSimulatorLayer(BaseLayer):
         #print(inputs.shape)
         #print(self.weights.shape)
 
-        self.input = inputs
+        #----------
+        # known working here
+        #----------
+        #inputs      = self.hidden.forward(inputs)
+        #self.input  = inputs
+        #self.result = self.activator(inputs @ self.weights)
+        #return self.result
+        #----------
+        # known working here
+        #----------
+
         height     = inputs.shape[0]
         length     = self.weights.shape[0]
-        weights    = inputs @ self.weights 
-        qubo       = self.qubo = {k: w for k, w in np.ndenumerate(weights)}
+        inputs     = self.hidden.forward(inputs)
+        #weights    = inputs @ self.weights
+        qubo       = self.qubo = {k: w for k, w in np.ndenumerate(inputs)}
         bqm        = self.bqm  = dimod.BinaryQuadraticModel({}, qubo, 0.0, 'BINARY')
-        bqmm       = self.bqmm = np.round(np.float64(bqm.to_numpy_matrix()))
+        #bqmm       = self.bqmm = np.round(np.float64(bqm.to_numpy_matrix()))
+        #print(inputs.shape)
+        #print(inputs)
+        #print(bqmm.shape)
+        #print(bqmm)
+        #raise Exception("askdljf")
 
-        samples     = dimod.ExactSolver().sample(bqm)
-        self.result = (np.array([
-            [-a.energy if s else 0 for s in a.sample.values()]
-            for i, a in enumerate(samples.data())
-            if a.energy <= 0.0
-        ]))#[0:height])
+        samples    = dimod.ExactSolver().sample(bqm)
+        qout       = np.array([
+            [s] for s in samples.first.sample.values()
+        ], dtype='float64')
 
+        #print(self.weights.shape)
+        #print(self.weights)
+        #print(qout.shape)
+        #print(qout)
+        #print(np.mean(qout, self.weights, axis=1))
+
+        ##self.result = self.activator(inputs @ np.mean(qout, self.weights, axis=1))
+        #qout = qout @ self.weights.T
+        #self.result = self.activator(inputs @ qout)
+        #print(self.result.shape)
+        #print(self.result)
+        #raise Exception('asdf')
+        #return self.result
+        self.input  = inputs
         self.result = self.activator(
-            weights * np.mean(self.result, axis=0, keepdims=True)
+            #inputs @ ((np.tanh(qout)* 0.01) * (self.weights))
+            inputs @ (self.weights + qout)
         )
+        #print(self.result.shape)
+        #print(self.result)
+        #raise Exception('asdf')
+        return self.result
+        #self.weights = qout * self.oweights
+        #self.input = qout
+        #self.result = self.activator(inputs @ qout) ## missing self.weights
+        #print(qout.shape)
+        #print(qout)
+        #print(inputs.shape)
+        #print(inputs)
+        self.result = self.activator(inputs @ qout) ## missing self.weights
+        #print(qout.shape)
+        #print(qout)
+        #print(self.result.shape)
+        #print(self.result)
+        #raise Exception("adfk")
+        #np.repeat(x, 3, axis=1)
+        #self.result = self.activator(np.array([
+        #    [s for s in a.sample.values()]
+        #    for i, a in enumerate(samples.data())
+        #    #if a.energy <= 0.0
+        #])[0:height] @ self.weights)
+        #print(self.result.shape)
+        #print(self.result)
+        ##print(self.result)
+        ##raise Exception("Dakldfs")
+        #print(self.weights.shape)
+        #print(self.weights)
+        #k = self.result @ self.weights
+        #print(k.shape)
+        #print(k)
+        return self.result
+
+
+        #self.result = self.activator(
+        #    weights * np.mean(self.result, axis=0, keepdims=True)
+        #)
 
         #print(result)
         #print(result.shape)
@@ -370,7 +448,6 @@ class QuantumSimulatorLayer(BaseLayer):
         #    for s in samples.first.sample.values()
         #]))
 
-        return self.result
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Tensor Matrix in a Support Vector Machine

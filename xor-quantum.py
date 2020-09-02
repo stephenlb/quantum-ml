@@ -34,21 +34,24 @@ import matplotlib.pyplot as plt
 class QuantumXOR(ai.NeuralNetwork):
     def initalize(self):
         super().initalize(
-            learn   =  0.01
-        ,   epochs  =  5000
-        ,   batch   =  9 # must = density * features
+            learn   =  0.02
+        ,   epochs  =  2000
+        ,   batch   =  12 # must = density * features
         ,   bias    =  1
-        ,   density =  3
+        ,   density =  4
         ,   high    =  2.0
         ,   low     = -2.0
         )
 
         #self.add(ai.StandardLayer, name='ElliotScaled',  activation='essigmoid')
-        self.add(ai.StandardLayer, name='ElliotSigmoid', activation='esigmoid')
-        #self.add(ai.StandardLayer, name='Sigmoid',       activation='sigmoid')
-        self.add(ai.QuantumSimulatorLayer, name='QuSim', activation='esigmoid')
+        #self.add(ai.StandardLayer, name='ElliotSigmoid', activation='esigmoid')
+        #self.add(ai.StandardLayer, name='ElliotSigmoid', activation='esigmoid')
         self.add(ai.StandardLayer, name='Sigmoid',       activation='sigmoid')
-        self.add(ai.StandardLayer, name='Output',        activation='linear')#, shape=[1, None])
+        self.add(ai.StandardLayer, name='Sigmoid',       activation='sigmoid')
+        #self.add(ai.StandardLayer, name='Sigmoid',       activation='sigmoid')
+        self.add(ai.QuantumSimulatorLayer, name='QuSim', activation='linear')
+        #self.add(ai.StandardLayer, name='Output',        activation='linear')#, shape=[1, None])
+        #self.add(ai.StandardLayer, name='Sigmoid',       activation='sigmoid')
         #self.add(ai.QuantumOutputLayer, name='QuOut', activation='sigmoid', shape=[1, None])
         #self.add(ai.StandardLayer, name='ElliotSSig',    activation='essigmoid')
         #self.add(ai.StandardLayer, name='Output',        activation='linear')#, shape=[1, None])
@@ -73,6 +76,7 @@ def main():
     results = nn.predict(features)
 
     print(np.column_stack((
+    #print(((
         results
     ,   np.round(results)
     ,   np.where(results > 0.5, 1, 0)
