@@ -52,7 +52,6 @@ class QuantumXOR(ai.NeuralNetwork):
         self.add(ai.QuantumSimulatorLayer, name='QuSim', activation='linear')
         #self.add(ai.StandardLayer, name='Output',        activation='linear')#, shape=[1, None])
         #self.add(ai.StandardLayer, name='Sigmoid',       activation='sigmoid')
-        #self.add(ai.QuantumOutputLayer, name='QuOut', activation='sigmoid', shape=[1, None])
         #self.add(ai.StandardLayer, name='ElliotSSig',    activation='essigmoid')
         #self.add(ai.StandardLayer, name='Output',        activation='linear')#, shape=[1, None])
         #self.add(ai.StandardLayer, name='ElliotSSig',    activation='essigmoid')#, shape=[1,None,1])
