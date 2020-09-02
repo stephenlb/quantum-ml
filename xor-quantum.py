@@ -78,15 +78,17 @@ def main():
     qx   = [x for x in range(len(qnn.loss))]
 
     fig, (ax1, ax2) = plt.subplots(2, 1)
-    fig.suptitle('Quantum VS Classical Machine Learning')
+    fig.suptitle('Quantum ML vs. Classical ML')
 
     ax1.set_ylabel('Quantum Error')
     ax1.set_yscale('log')
+    #ax1.plot(qx, [n or 1e-32 for n in qnn.loss], '.-')
     ax1.plot(qx, qnn.loss, '.-')
 
-    ax2.set_xlabel('Training Iteration')
+    ax2.set_xlabel('Training Iteration (epoch)')
     ax2.set_ylabel('Classical Error')
     ax2.set_yscale('log')
+    #ax2.plot(cx, [n or 1e-32 for n in nn.loss], 'o-')
     ax2.plot(cx, nn.loss, 'o-')
 
     plt.show()
@@ -98,9 +100,12 @@ def classical():
     features = [[1,1],[0,0],[1,0],[0,1]]
     labels   = [ [1],  [1],  [0],  [0] ]
 
+    def updates(epoch): print(epoch, nn.loss_avg[-1], nn.loss[-1])
+
     nn = ClassicalXOR()
     nn.load(features=features, labels=labels)
-    nn.train(progress=lambda epoch : print(epoch, np.average(nn.loss)))
+    nn.train(progress=updates)
+
     results = nn.predict(features)
 
     print(np.column_stack((
@@ -123,6 +128,7 @@ def quantum():
     qnn = QuantumXOR()
     qnn.load(features=features, labels=labels)
     qnn.train(progress=updates)
+
     results = qnn.predict(features)
 
     print(np.column_stack((
