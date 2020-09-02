@@ -3,6 +3,8 @@
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 import ai
 import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Classical XOR Model
@@ -40,6 +42,11 @@ def main():
     ,   np.round(results)
     ,   np.array(labels)
     )))
+
+    x = [x for x in range(len(nn.loss))]
+    plt.plot(x, nn.loss, 'bo')
+    plt.yscale('log')
+    plt.show()
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Run Main
