@@ -15,7 +15,14 @@ The following figures are two training sessions comparing
 Quantum Machine Learning with Classical Machine Learning.
 The images are represented using the same hyper parameters.
 
+### Quantum ML vs Classical ML
+
+Comparing using the same hyper parameters.
+
 ![Figure 1](media/quantum-ml-vs-classical-ml-1.png)
+
+This second figure shows similar results.
+
 ![Figure 2](media/quantum-ml-vs-classical-ml-2.png)
 
 As you can see, the QSVM outperforms the Classical SVM.

@@ -12,20 +12,19 @@ import matplotlib.pyplot as plt
 ##  ◀ ▶ ▲ ▼ ×
 ## ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽
 #  
-#  In (batch × units) 
+#  In        (batch × units) 
 #   ▼
 #  HiddenSig (units × units)
 #   ▼
-#  QUBO (units × units)
+#  QUBO      (units × units)
 #   ▼
-#  QOut (1 x batch)
+#  QOut      (1 x batch)
 #   ▼
-#  QLinear (batch x units)
+#  QLinear   (batch x units)
 #   ▼
 #  HiddenSig (units x units)
 #   ▼
-#  Output (1 x batch)
-#  
+#  Output    (1 x batch)
 #  
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -33,10 +32,12 @@ import matplotlib.pyplot as plt
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class QuantumXOR(ai.NeuralNetwork):
     def initalize(self):
+        density  = 4
+        features = 3 ## change for training features!
         super().initalize(
             learn   =  0.02
         ,   epochs  =  2000
-        ,   batch   =  12 # must = density * features
+        ,   batch   =  density * features
         ,   bias    =  1
         ,   density =  4
         ,   high    =  2.0
@@ -82,13 +83,11 @@ def main():
 
     ax1.set_ylabel('Quantum Error')
     ax1.set_yscale('log')
-    #ax1.plot(qx, [n or 1e-32 for n in qnn.loss], '.-')
     ax1.plot(qx, qnn.loss, '.-')
 
     ax2.set_xlabel('Training Iteration (epoch)')
     ax2.set_ylabel('Classical Error')
     ax2.set_yscale('log')
-    #ax2.plot(cx, [n or 1e-32 for n in nn.loss], 'o-')
     ax2.plot(cx, nn.loss, 'o-')
 
     plt.show()
