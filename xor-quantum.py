@@ -3,7 +3,30 @@
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 import ai
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
+
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Quantum SVM Model
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+##  ◀ ▶ ▲ ▼ ×
+## ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽ ⎽
+#  
+#  In (batch × units) 
+#   ▼
+#  HiddenSig (units × units)
+#   ▼
+#  QUBO (units × units)
+#   ▼
+#  QOut (1 x batch)
+#   ▼
+#  QLinear (batch x units)
+#   ▼
+#  HiddenSig (units x units)
+#   ▼
+#  Output (1 x batch)
+#  
+#  
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Quantum XOR Model
@@ -11,20 +34,26 @@ import matplotlib.pyplot as plt
 class QuantumXOR(ai.NeuralNetwork):
     def initalize(self):
         super().initalize(
-            learn   =  0.00001
-        ,   epochs  =  1200
+            learn   =  0.01
+        ,   epochs  =  5000
         ,   batch   =  9 # must = density * features
         ,   bias    =  1
         ,   density =  3
-        ,   high    =  1.0
-        ,   low     = -1.0
+        ,   high    =  2.0
+        ,   low     = -2.0
         )
 
-        self.add(ai.StandardLayer, name='ElliotScaled',  activation='essigmoid')
-        self.add(ai.QuantumSimulatorLayer, name='QuSim', activation='linear')
+        #self.add(ai.StandardLayer, name='ElliotScaled',  activation='essigmoid')
         self.add(ai.StandardLayer, name='ElliotSigmoid', activation='esigmoid')
-        self.add(ai.StandardLayer, name='ElliotSigmoid', activation='sigmoid')
-        self.add(ai.StandardLayer, name='Output',        activation='linear')
+        #self.add(ai.StandardLayer, name='Sigmoid',       activation='sigmoid')
+        self.add(ai.QuantumSimulatorLayer, name='QuSim', activation='esigmoid')
+        self.add(ai.StandardLayer, name='Sigmoid',       activation='sigmoid')
+        self.add(ai.StandardLayer, name='Output',        activation='linear')#, shape=[1, None])
+        #self.add(ai.QuantumOutputLayer, name='QuOut', activation='sigmoid', shape=[1, None])
+        #self.add(ai.StandardLayer, name='ElliotSSig',    activation='essigmoid')
+        #self.add(ai.StandardLayer, name='Output',        activation='linear')#, shape=[1, None])
+        #self.add(ai.StandardLayer, name='ElliotSSig',    activation='essigmoid')#, shape=[1,None,1])
+        #self.add(ai.QuantumHardwareLayer, name='QuHard', activation='linear')
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Main
@@ -33,16 +62,20 @@ def main():
     features = [[1,1],[0,0],[1,0],[0,1]]
     labels   = [ [1],  [1],  [0],  [0] ]
 
+    def updates(epoch): print(epoch, nn.loss_avg[-1], nn.loss[-1])
+
     nn = QuantumXOR()
     nn.load(features=features, labels=labels)
-    nn.train(
-        progress=lambda epoch : print(epoch, np.average(nn.loss), nn.loss[-1])
-    )
+    nn.train(progress=updates, updates=100)
+    print("")
+    print("PREDICTING..........")
+    print("")
     results = nn.predict(features)
 
     print(np.column_stack((
         results
     ,   np.round(results)
+    ,   np.where(results > 0.5, 1, 0)
     ,   np.array(labels)
     )))
 

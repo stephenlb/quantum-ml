@@ -38,22 +38,29 @@ class NeuralNetwork():
         self.unbuilt   = []      ## prototype of neural network layers
         self.layers    = []      ## fully built network after data load
         self.loss      = []      ## loss from most recent training
+        self.loss_avg  = []      ## loss average from most recent training
 
     def build(self):
         layers = len(self.unbuilt) - 1
-        shape  = (self.shape[0], self.density * self.shape[0], self.shape[1])
-        self.layers = [
-            layer.builder(
+        shape  = [self.shape[0], self.density * self.shape[0], self.shape[1]]
+        size   = [0,0]
+
+        for i, layer in enumerate(self.unbuilt):
+            size[0] = shape[0] if i == 0      else shape[1]
+            size[1] = shape[2] if i == layers else shape[1]
+            if layer.shape[0]: size[0] = layer.shape[0]
+            if layer.shape[1]: size[0] = layer.shape[1]
+            self.layers.append(layer.builder(
                 name=layer.name,
-                size=(
-                    shape[0] if i == 0      else shape[1],
-                    shape[2] if i == layers else shape[1]
-                ),
+                size=size,
                 high=self.high,
                 low=self.low,
                 activation=layer.activation
-            ) for i, layer in enumerate(self.unbuilt)
-        ]
+            ))
+        for i, layer in enumerate(self.layers):
+            print(i, layer.size, layer.weights.shape, layer.name)
+
+        #raise Exception("asdf")
 
     def load(self, features=[[1],[0]], labels=[[1],[0]]):
         s, f, l       = len(features), len(features[0]) + 1, len(labels[0])
@@ -83,10 +90,11 @@ class NeuralNetwork():
         ,   'activation' : layer.activation
         } for layer in self.layers])
 
-    def add(self, builder, name='Unamed', activation='none'):
+    def add(self, builder, name='Unamed', activation='none', shape=[None,None]):
         self.unbuilt.append(LayerLoader(
             builder=builder
         ,   name=name
+        ,   shape=shape
         ,   activation=activation
         ))
 
@@ -104,7 +112,7 @@ class NeuralNetwork():
             labels.append(self.labels[index])
         return np.array(features), np.array(labels)
         
-    def train(self, progress=None):
+    def train(self, progress=None, updates=10):
         if not self.initalized(): return
 
         for epoch in range(self.epochs):
@@ -114,9 +122,10 @@ class NeuralNetwork():
             self.backward(gradient)
             self.optimize()
             self.loss.append(np.sum(gradient) ** 2)
+            self.loss_avg.append(np.average(self.loss))
 
-            if progress and self.epochs > 10 and \
-            not (epoch % int(self.epochs / 10)):
+            if progress and self.epochs > updates and \
+            not (epoch % int(self.epochs / updates)):
                 progress(epoch)
 
     def predict(self, features):
@@ -178,10 +187,17 @@ class ClassicalNN(NeuralNetwork):
 ## Layer Loader
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class LayerLoader():
-    def initalize(self, builder, name='Unamed', activation='none'):
+    def initalize(
+        self
+    ,   builder
+    ,   name='Unamed'
+    ,   activation='none'
+    ,   shape=[None,None]
+    ):
         self.builder    = builder
         self.name       = name
         self.activation = activation
+        self.shape      = shape
 
     def __init__(self, **kwargs): self.initalize(**kwargs)
 
@@ -210,20 +226,15 @@ class BaseLayer():
 
     def forward(self, inputs): 
         self.input  = inputs
-        try:
-            self.result = self.activator(inputs @ self.weights)
-        except:
-            print(inputs)
-            print(self.weights)
-            print(inputs.shape)
-            print(self.weights.shape)
-            raise Exception("klasdfj")
-            
+        self.result = self.activator(inputs @ self.weights)
         return self.result
 
     def backward(self, gradient):
+        #print("back",self.name)
+        #print("back",self.weights.shape)
+        #print("back",self.input.shape)
         self.gradient = self.input.T @ gradient
-        return gradient.dot(self.weights.T) * self.derivative(self.input)
+        return (gradient @ self.weights.T) * self.derivative(self.input)
 
     def binary(N):     return np.where(N > 0.5, 1, 0)
     def binaryd(N):    return np.where(N > 0.5, 1, 0)
@@ -269,58 +280,97 @@ class QuantumHardwareLayer(BaseLayer):
         self.type = 'quantum-hardware'
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Quantum Output Layer in a Support Vector Machine - Continuation of SVM from Q
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+class QuantumOutputLayer(BaseLayer):
+    def initalize(self, **kwargs):
+        super().initalize(**kwargs)
+
+    #def backward(self, gradient):
+    #    print("Qback",self.name)
+    #    print("Qback",self.weights.shape)
+    #    print("Qback",self.input.shape)
+    #    self.gradient = self.input.T @ gradient
+    #    print("Qback",self.gradient.shape)
+    #    back = (gradient @ self.weights.T) * self.derivative(self.input)
+    #    print("Qback!!!!!!!!!!!",back.shape)
+    #    return back
+
+    #def forward(self, inputs): 
+    #    print(self.name)
+    #    print(inputs.shape)
+    #    print(self.weights.shape)
+        ## convert input of first sample into output dims
+        #self.input  = inputs
+        #self.result = self.activator(inputs * self.weights)
+
+
+        #print(inputs.shape)
+        #print(self.weights.shape)
+        #print(self.result.shape)
+        #raise Exception('askdflja')
+
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Quantum Layer in a Support Vector Machine - Simulates QPU
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class QuantumSimulatorLayer(BaseLayer):
     def initalize(self, **kwargs):
         super().initalize(**kwargs)
-        self.type = 'quantum-simulator'
-        self.qubo = None
-        self.bqm  = None
+        self.type    = 'quantum-simulator'
+        self.qubo    = None
+        self.bqm     = None
+        #self.weights = Tensor(size=size, high=high, low=low).matrix
+
+    #def backward(self, gradient):
+    #    self.gradient = self.input.T @ gradient
+    #    return (gradient.T @ self.weights) * self.derivative(self.input)
 
     #def backward(self, gradient):
     #    self.gradient = self.input.T @ gradient
     #    return gradient.dot(self.weights.T) * self.derivative(self.input)
 
     def forward(self, inputs): 
-        #if inputs.shape != self.weights.shape:
-        #    raise Exception(
-        #        "\n\nQuantum Degradation: \n" + \
-        #        "Batch size must equal Number of Features * Density\n"
-        #    )
+        #print(self.name)
+        #print(inputs.shape)
+        #print(self.weights.shape)
 
         self.input = inputs
+        height     = inputs.shape[0]
+        length     = self.weights.shape[0]
         weights    = inputs @ self.weights 
         qubo       = self.qubo = {k: w for k, w in np.ndenumerate(weights)}
         bqm        = self.bqm  = dimod.BinaryQuadraticModel({}, qubo, 0.0, 'BINARY')
         bqmm       = self.bqmm = np.round(np.float64(bqm.to_numpy_matrix()))
 
-        samples = dimod.ExactSolver().sample(bqm)
-        height = inputs.shape[0]
-        length = self.weights.shape[0]
-        result = self.activator(np.array([
-            list(s.sample.values())
-            for s in samples.data()
-            if s.energy <= 0.0
-        ])[0:height])
+        samples     = dimod.ExactSolver().sample(bqm)
+        self.result = (np.array([
+            [-a.energy if s else 0 for s in a.sample.values()]
+            for i, a in enumerate(samples.data())
+            if a.energy <= 0.0
+        ]))#[0:height])
 
-        self.result = result
-        return result
-        if not result.shape[0]:
-            result = np.ones((height,length))
-        elif length > result.shape[0]:
-            pad = length - result.shape[0]
-            result = np.concatenate((result, np.ones((pad,length))))
-        self.result = result
-        return result
-        try:
-            pass
-        except:
-            print(self.result)
-            print('result:',self.result.shape)
-            print('weights.shape:',weights.shape)
-            print('self.input.shape:',self.input.shape)
-            print(X)
+        self.result = self.activator(
+            weights * np.mean(self.result, axis=0, keepdims=True)
+        )
+
+        #print(result)
+        #print(result.shape)
+        #print(self.result)
+        #print(self.result.shape)
+        #print(weights.shape)
+        #print(self.weights.shape)
+        #print(bqmm)
+        #print(np.mean(self.result, axis=0, keepdims=True))
+        #print(inputs)
+        #print((inputs * np.mean(self.result, axis=0, keepdims=True)))
+        #print(self.result)
+        #raise Exception("asdf:")
+        #self.result = self.activator(inputs @ np.array([
+        #    [s]
+        #    for s in samples.first.sample.values()
+        #]))
+
+        return self.result
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Tensor Matrix in a Support Vector Machine
