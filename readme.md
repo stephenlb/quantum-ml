@@ -1,14 +1,14 @@
 # Quantum Machine Learning vs Classical Machine Learning
 
 Quantum Machine Learning is claimed to be better.
-Faster deep learning training on smaller data sets.
-Improved accuracy as well.
+Faster deep learning training.
+Higher accuracy on smaller data sets.
 
 > Goal: Build a QSVM (Quantum Support Vector Machine) where D-Wave QPU provides
 > weights to be used in classical SVM prediction models.
-> Improvements should be, speedup and higher accuracy.
+> Improvements we want include: speedup and higher accuracy.
 
-## Results are Promising
+## Quantum Results are Promising
 
 Quantum ML converges more quickly than classical.
 With fewer training cycles, this can be considered a speedup.
@@ -56,6 +56,8 @@ docker build . -t quantum-ml
 docker run -e DWAVE_API_KEY=YOUR_API_KEY quantum-ml
 ```
 
+## Quantum Training Approach
+
 Looking to take a conventional Machine Learning Algorithm
 with SGD (stochastic gradient decent) on an SVM (support vector machine)
 and apply it in a quantum circuit.
@@ -77,3 +79,23 @@ In addition, deep learning with multi-layer neural nets.
 
 The Quantum chip (QPU) is programmable using assembly-like instructions.
 Making the task that much more tricky.
+
+## Quantum Leap: Optimization
+
+An optimization strategy is to reduce the number of sampling events
+required when measuring optimal weight adjustments for each epoch.
+Instead of sampling the weights each epoch,
+we can instead sample 10x fewer times
+keeping a cache of the most recent quantum samples.
+
+It's not needed to obtain a quantum sample every epoch.
+The convergence hasn't approached most recent sampling optimizations.
+
+## Conclusion
+
+Overall, quantum delivers on the promise.
+The addition of Quantum in Machine Learning has shown to achieve our goal.
+Quantum is faster.
+Quantum creates more accurate models.
+Also, as a bonus, Quantum can reduce training data
+volume requirements for deep learning.
