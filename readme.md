@@ -1,4 +1,4 @@
-# Quantum Machine Learning vs Classical Machine Learning
+# Quantum Machine Learning vs Classical ML
 
 Quantum Machine Learning is claimed to be better.
 Faster deep learning training.
@@ -20,10 +20,12 @@ The images are represented using the same hyper parameters.
 ### Quantum ML vs Classical ML
 
 Comparing using the same hyper parameters.
+**Lower points** on the charts are **better**.
 
 ![Figure 1](media/quantum-ml-vs-classical-ml-1.png)
 
 This second figure shows similar results.
+Note that the Quantum converges more quickly.
 
 ![Figure 2](media/quantum-ml-vs-classical-ml-2.png)
 

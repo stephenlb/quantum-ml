@@ -53,12 +53,14 @@ class QuantumXOR(ai.NeuralNetwork):
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class ClassicalXOR(ai.NeuralNetwork):
     def initalize(self):
+        density  = 4
+        features = 3 ## change for training features!
         super().initalize(
             learn   =  0.02
         ,   epochs  =  2000
-        ,   batch   =  10
+        ,   batch   =  density * features
         ,   bias    =  1
-        ,   density =  6
+        ,   density =  4
         ,   high    =  2.0
         ,   low     = -2.0
         )
