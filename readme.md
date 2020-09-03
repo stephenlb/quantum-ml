@@ -1,8 +1,10 @@
 # Quantum Machine Learning vs Classical ML
 
-Quantum Machine Learning is claimed to be better.
-Faster deep learning training.
-Higher accuracy on smaller data sets.
+Quantum, when added to Machine Learning, is claimed to be better.
+Better with faster deep learning training.
+Better with higher accuracy on smaller data sets.
+Is this true?
+Let's find out.
 
 > Goal: Build a QSVM (Quantum Support Vector Machine) where D-Wave QPU provides
 > weights to be used in classical SVM prediction models.
@@ -24,14 +26,17 @@ Comparing using the same hyper parameters.
 
 ![Figure 1](media/quantum-ml-vs-classical-ml-1.png)
 
-This second figure shows similar results.
-Note that the Quantum converges more quickly.
+This second figure shows pretty much the same results.
+Note that the Quantum converges more quickly than the classical
+in both training graphs.
 
 ![Figure 2](media/quantum-ml-vs-classical-ml-2.png)
 
 As you can see, the QSVM outperforms the Classical SVM.
 This happens most of the time.
 The RNG nature of initial weights may change the outcome.
+
+More PNG image results are in the `./media` directory.
 
 ## Try it out
 
