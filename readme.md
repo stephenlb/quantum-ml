@@ -102,6 +102,14 @@ learnings post quantum tunneling events.
 
 The Quantum chip (QPU) is programmable using assembly-like instructions.
 Making the task that much more tricky.
+However several ease-of-use approaches have been made available.
+The use of QUBO solvers make it easier to solve quantum problems without needing a lot of code.
+QUBO solvers also allow you to skip the need to construct ideal quantum circuit.
+
+While QUBO solvers help a new problem is introduced.
+Find the weight coefficients becomes the new challenge.
+Creating an algorithmic approach is yet to become a standard. 
+More research is needed to develop quantum interfaces.
 
 ## Quantum Leap: Optimization
 
