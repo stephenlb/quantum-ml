@@ -119,7 +119,7 @@ Instead of sampling the weights each epoch,
 we can instead sample 10x fewer times
 keeping a cache of the most recent quantum samples.
 
-It's not needed to obtain a quantum sample every epoch.
+Quantum sampling isn't needed on each epoch.
 The convergence hasn't approached most recent sampling optimizations.
 This approach may reduce training time.
 
