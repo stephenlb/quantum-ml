@@ -1,17 +1,19 @@
-# Quantum Machine Learning vs Classical
+# Quantum Machine Learning vs Classical Machine Learning
 
-This is a learn repostiory for exploring.
-Code is for exploration, not production.
+Quantum Machine Learning is claimed to be better.
+Faster deep learning training on smaller data sets.
+Improved accuracy as well.
 
 > Goal: Build a QSVM (Quantum Support Vector Machine) where D-Wave QPU provides
 > weights to be used in classical SVM prediction models.
+> Improvements should be, speedup and higher accuracy.
 
-## Initial Results are Promising
+## Results are Promising
 
 Quantum ML converges more quickly than classical.
 With fewer training cycles, this can be considered a speedup.
 
-The following figures are two training sessions comparing 
+The following figures are training sessions comparing 
 Quantum Machine Learning with Classical Machine Learning.
 The images are represented using the same hyper parameters.
 
@@ -28,7 +30,15 @@ This second figure shows similar results.
 As you can see, the QSVM outperforms the Classical SVM.
 This happens most of the time.
 The RNG nature of initial weights may change the outcome.
-Try it yourself!
+
+## Try it out
+
+Both docker and local python follow here.
+You will need to run the training session multiple times.
+This is because sometimes the model will miss convergence.
+You'll get results representing quantum optimizations.
+Nearly all Quantum runs show that the MSE is one order
+of magnitude more optimal than the classical.
 
 ### Run with Python Locally
 
@@ -36,7 +46,7 @@ Running on your local machine, use these following commands.
 
 ```shell
 pip install -r requirements.txt
-python xor-quantum.py
+python main.py
 ```
 
 ### Run with Docker
@@ -61,7 +71,7 @@ Quantum Machine Learning appears solvable with a BQM / QUBO.
 
 We need to generate a shallow neural net matrix weights
 to be used in predicting outcomes.
-In addtion, deep learning with multi-layer neural nets.
+In addition, deep learning with multi-layer neural nets.
 
 ## Challenges with Quantum Machine Learning
 
