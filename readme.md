@@ -92,6 +92,7 @@ keeping a cache of the most recent quantum samples.
 
 It's not needed to obtain a quantum sample every epoch.
 The convergence hasn't approached most recent sampling optimizations.
+This approach may reduce training time.
 
 ## Conclusion
 
