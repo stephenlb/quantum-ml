@@ -36,6 +36,15 @@ As you can see, the QSVM outperforms the Classical SVM.
 This happens most of the time.
 The RNG nature of initial weights may change the outcome.
 
+### Quantum Deep Learning vs Classical Deep Learning
+
+The quantum MSE converges more quickly than the classical.
+It is possible to tune the hyper parameters in the favor of both models.
+In this case, however, the hyper parameters are shared for both
+the classical deep learning and quantum deep learning models.
+
+![Figure 3](media/quantum-mse-in-action.png)
+
 More PNG image results are in the `./media` directory.
 
 ## Try it out
