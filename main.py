@@ -22,8 +22,6 @@ import matplotlib.pyplot as plt
 #   ▼
 #  QLinear   (batch x units)
 #   ▼
-#  HiddenSig (units x units)
-#   ▼
 #  Output    (1 x batch)
 #  
 
@@ -32,7 +30,7 @@ import matplotlib.pyplot as plt
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class QuantumXOR(ai.NeuralNetwork):
     def initalize(self):
-        density  = 3
+        density  = 4
         features = 3
         super().initalize(
             learn   =  0.02
@@ -53,7 +51,7 @@ class QuantumXOR(ai.NeuralNetwork):
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class ClassicalXOR(ai.NeuralNetwork):
     def initalize(self):
-        density  = 3
+        density  = 4
         features = 3
         super().initalize(
             learn   =  0.02
