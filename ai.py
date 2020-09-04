@@ -284,6 +284,7 @@ class QuantumSimulatorLayer(BaseLayer):
         super().initalize(**kwargs)
         self.type     = 'quantum-simulator'
         self.learn    = learn
+        self.qweights = None
         self.qubo     = None
         self.bqm      = None
         size          = self.weights.shape[0]
@@ -292,8 +293,8 @@ class QuantumSimulatorLayer(BaseLayer):
         ,   size=(size,size)
         ,   activation='sigmoid'
         #,   activation='linear'
-        ,   high=10.0
-        ,   low=-10.0
+        ,   high=2.0
+        ,   low=-2.0
         )
 
     def backward(self, gradient):
@@ -303,22 +304,29 @@ class QuantumSimulatorLayer(BaseLayer):
         self.hidden.weights -= self.learn * self.hidden.gradient
         return gradient
 
-    def forward(self, inputs): 
-        height = inputs.shape[0]
-        length = self.weights.shape[0]
-        inputs = self.hidden.forward(inputs)
-        qubo   = self.qubo = {k: w for k, w in np.ndenumerate(self.hidden.weights)}
-        bqm    = self.bqm  = dimod.BinaryQuadraticModel({}, qubo, 0.0, 'BINARY')
-        #bqmm   = self.bqmm = np.round(np.float64(bqm.to_numpy_matrix()))
+    def anneal(self):
+        if self.bqm and np.random.random() < 0.99: return
 
-        samples = dimod.ExactSolver().sample(bqm)
-        qout    = np.array([
+        qubo = self.qubo = {k: w for k, w in np.ndenumerate(self.hidden.weights)}
+        bqm  = self.bqm  = dimod.BinaryQuadraticModel({}, qubo, 0.0, 'BINARY')
+        #bqmm = self.bqmm = np.round(np.float64(bqm.to_numpy_matrix()))
+
+        samples  = dimod.ExactSolver().sample(bqm)
+        qweights = np.array([
             [s] for s in samples.first.sample.values()
         ], dtype='float64')
 
+        self.qweights = qweights
+        #print(self.qweights.T)
+        
+    def forward(self, inputs): 
+        inputs = self.hidden.forward(inputs)
+
+        self.anneal()
+
         self.input  = inputs
         self.result = self.activator(
-            inputs @ (self.weights * (qout + 1e-9))
+            inputs @ (self.weights * (self.qweights + 1e-9))
         )
 
         return self.result

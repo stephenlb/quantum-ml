@@ -32,14 +32,14 @@ import matplotlib.pyplot as plt
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class QuantumXOR(ai.NeuralNetwork):
     def initalize(self):
-        density  = 4
-        features = 3 ## change for training features!
+        density  = 3
+        features = 3
         super().initalize(
             learn   =  0.02
         ,   epochs  =  2000
         ,   batch   =  density * features
         ,   bias    =  1
-        ,   density =  4
+        ,   density =  density
         ,   high    =  2.0
         ,   low     = -2.0
         )
@@ -53,21 +53,21 @@ class QuantumXOR(ai.NeuralNetwork):
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class ClassicalXOR(ai.NeuralNetwork):
     def initalize(self):
-        density  = 4
-        features = 3 ## change for training features!
+        density  = 3
+        features = 3
         super().initalize(
             learn   =  0.02
         ,   epochs  =  2000
         ,   batch   =  density * features
         ,   bias    =  1
-        ,   density =  4
+        ,   density =  density
         ,   high    =  2.0
         ,   low     = -2.0
         )
 
-        self.add(ai.StandardLayer, name='Sigmoid',       activation='sigmoid')
-        self.add(ai.StandardLayer, name='Sigmoid',       activation='sigmoid')
-        self.add(ai.StandardLayer, name='Output',        activation='linear')
+        self.add(ai.StandardLayer, name='Sigmoid', activation='sigmoid')
+        self.add(ai.StandardLayer, name='Sigmoid', activation='sigmoid')
+        self.add(ai.StandardLayer, name='Output',  activation='linear')
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Main
@@ -75,8 +75,8 @@ class ClassicalXOR(ai.NeuralNetwork):
 def main():
     nn  = classical()
     qnn = quantum()
-    cx   = [x for x in range(len(nn.loss))]
-    qx   = [x for x in range(len(qnn.loss))]
+    cx  = [x for x in range(len(nn.loss))]
+    qx  = [x for x in range(len(qnn.loss))]
 
     fig, (ax1, ax2) = plt.subplots(2, 1)
     fig.suptitle('Quantum ML vs. Classical ML')
@@ -84,11 +84,23 @@ def main():
     ax1.set_ylabel('Quantum Error')
     ax1.set_yscale('log')
     ax1.plot(qx, qnn.loss, '.-')
+    ax1b = ax1.twinx()
+    ax1b.axis(ymin=0, ymax=nn.loss_avg[200])
+    ax1b.set_ylabel('mse', color='tab:red')
+    ax1b.tick_params(axis='y', labelcolor='tab:red')
+    ax1b.text(len(nn.loss)+6, nn.loss_avg[200]-nn.loss_avg[200]*.14, str(qnn.loss_avg[-1]), color='tab:red', horizontalalignment='right', verticalalignment='top')
+    ax1b.plot(qx, qnn.loss_avg, '.-', color='tab:red')
 
     ax2.set_xlabel('Training Iteration (epoch)')
     ax2.set_ylabel('Classical Error')
     ax2.set_yscale('log')
     ax2.plot(cx, nn.loss, 'o-')
+    ax2b = ax2.twinx()
+    ax2b.axis(ymin=0, ymax=nn.loss_avg[200])
+    ax2b.set_ylabel('mse', color='tab:red')
+    ax2b.tick_params(axis='y', labelcolor='tab:red')
+    ax2b.text(len(nn.loss)+6, nn.loss_avg[200]-nn.loss_avg[200]*.14, str(nn.loss_avg[-1]), color='tab:red', horizontalalignment='right', verticalalignment='top')
+    ax2b.plot(cx, nn.loss_avg, '.-', color='tab:red')
 
     plt.show()
 
