@@ -38,12 +38,15 @@ The RNG nature of initial weights may change the outcome.
 
 ### Quantum Deep Learning vs Classical Deep Learning
 
-The quantum MSE converges more quickly than the classical.
+The quantum model learns differently comparing to the classical model.
+Notice that the quantum finds a fit to the data set
+that differs from the classical model.
+
+![Figure 3](media/quantum-mse-in-action.png)
+
 It is possible to tune the hyper parameters in the favor of both models.
 In this case, however, the hyper parameters are shared for both
 the classical deep learning and quantum deep learning models.
-
-![Figure 3](media/quantum-mse-in-action.png)
 
 More PNG image results are in the `./media` directory.
 
