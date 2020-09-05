@@ -42,7 +42,7 @@ The quantum model learns differently comparing to the classical model.
 Notice that the quantum finds a fit to the data set
 that differs from the classical model.
 
-![Figure 3](media/quantum-mse-in-action.png)
+![Figure 3](media/quantum-mse-in-action-2.png)
 
 It is possible to tune the hyper parameters in the favor of both models.
 In this case, however, the hyper parameters are shared for both
