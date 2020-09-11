@@ -130,6 +130,9 @@ More research is needed to develop quantum interfaces.
 
 ## Quantum Leap: Optimization
 
+> **Update: this was added.**
+> The `ai.py` lib includes a QPU optimization of 99% usage.
+
 An optimization strategy is to reduce the number of sampling events
 required when measuring optimal weight adjustments for each epoch.
 Instead of sampling the weights each epoch,

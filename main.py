@@ -33,8 +33,8 @@ class QuantumXOR(ai.NeuralNetwork):
         density  = 4
         features = 3
         super().initalize(
-            learn   =  0.02
-        ,   epochs  =  2000
+            learn   =  0.1
+        ,   epochs  =  3000
         ,   batch   =  density * features
         ,   bias    =  1
         ,   density =  density
@@ -54,8 +54,8 @@ class ClassicalXOR(ai.NeuralNetwork):
         density  = 4
         features = 3
         super().initalize(
-            learn   =  0.02
-        ,   epochs  =  2000
+            learn   =  0.1
+        ,   epochs  =  3000
         ,   batch   =  density * features
         ,   bias    =  1
         ,   density =  density
