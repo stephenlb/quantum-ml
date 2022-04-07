@@ -6,6 +6,8 @@ import json
 import numpy as np
 import neal
 import dimod
+import dwave
+import dwave.system as ds
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Configuration
@@ -268,15 +270,6 @@ class StandardLayer(BaseLayer):
         self.type = 'standard'
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-## Quantum Layer in a Support Vector Machine - REQUIRES QPU HARDWARE
-## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-class QuantumHardwareLayer(BaseLayer):
-    def forward(self): pass
-    def initalize(self, **kwargs):
-        super().initalize(**kwargs)
-        self.type = 'quantum-hardware'
-
-## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Quantum Layer in a Support Vector Machine - Simulates QPU
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 class QuantumSimulatorLayer(BaseLayer):
@@ -304,20 +297,22 @@ class QuantumSimulatorLayer(BaseLayer):
         self.hidden.weights -= self.learn * self.hidden.gradient
         return gradient
 
+    def qpu(self, bqm):
+        return dimod.ExactSolver().sample(bqm)
+
     def anneal(self):
-        if self.bqm and np.random.random() < 0.99: return
+        if self.bqm: return# and np.random.random() < 0.9999: return
 
         qubo = self.qubo = {k: w for k, w in np.ndenumerate(self.hidden.weights)}
         bqm  = self.bqm  = dimod.BinaryQuadraticModel({}, qubo, 0.0, 'BINARY')
         #bqmm = self.bqmm = np.round(np.float64(bqm.to_numpy_matrix()))
 
-        samples  = dimod.ExactSolver().sample(bqm)
+        samples  = self.qpu(bqm)
         qweights = np.array([
             [s] for s in samples.first.sample.values()
         ], dtype='float64')
 
         self.qweights = qweights
-        #print(self.qweights.T)
         
     def forward(self, inputs): 
         inputs = self.hidden.forward(inputs)
@@ -330,6 +325,18 @@ class QuantumSimulatorLayer(BaseLayer):
         )
 
         return self.result
+
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+## Quantum Layer in a Support Vector Machine - REQUIRES QPU HARDWARE
+## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+class QuantumHardwareLayer(QuantumSimulatorLayer):
+    def qpu(self, bqm):
+        sampler = ds.EmbeddingComposite(ds.DWaveSampler(token=DWAVE_API_KEY))
+        return sampler.sample(bqm, num_reads=1000)
+
+    def initalize(self, **kwargs):
+        super().initalize(**kwargs)
+        self.type = 'quantum-hardware'
 
 ## =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 ## Tensor Matrix in a Support Vector Machine
